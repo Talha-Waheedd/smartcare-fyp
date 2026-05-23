@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "43291649087",
+    "project_id": "smartcare-fyp",
+    "storage_bucket": "smartcare-fyp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:43291649087:android:4e32245216ea99a246448a",
+        "android_client_info": {
+          "package_name": "com.example.smartcare_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAdyNhfj-brvb4bT4_DcRwjnaHNadcWNl4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
