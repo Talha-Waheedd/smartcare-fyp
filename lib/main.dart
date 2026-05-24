@@ -4,14 +4,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
+import 'theme/app_theme.dart';
 
 import 'screens/auth/login_screen.dart';
 import 'screens/patient/patient_screen.dart';
 import 'screens/doctor/doctor_screen.dart';
 import 'screens/admin/admin_screen.dart';
-import 'services/notification_service.dart';
 
-// Must be top-level — handles FCM when app is terminated/background
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -19,14 +18,8 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
-  // Register background FCM handler
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-
   runApp(const SmartCareApp());
 }
 
@@ -38,10 +31,7 @@ class SmartCareApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'SmartCare',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.theme,
       home: const AuthWrapper(),
     );
   }
@@ -63,8 +53,7 @@ class AuthWrapper extends StatelessWidget {
         }
         final uid = authSnapshot.data!.uid;
         return FutureBuilder<DocumentSnapshot>(
-          future:
-              FirebaseFirestore.instance.collection('users').doc(uid).get(),
+          future: FirebaseFirestore.instance.collection('users').doc(uid).get(),
           builder: (context, userSnapshot) {
             if (userSnapshot.connectionState == ConnectionState.waiting) {
               return const SplashScreen();
@@ -72,8 +61,7 @@ class AuthWrapper extends StatelessWidget {
             if (!userSnapshot.hasData || !userSnapshot.data!.exists) {
               return const LoginScreen();
             }
-            final data =
-                userSnapshot.data!.data() as Map<String, dynamic>;
+            final data = userSnapshot.data!.data() as Map<String, dynamic>;
             final role = (data['role'] as String?) ?? 'patient';
             if (role == 'doctor') return const DoctorScreen();
             if (role == 'admin') return const AdminScreen();
@@ -90,18 +78,34 @@ class SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
+      backgroundColor: AppColors.primary,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.health_and_safety, size: 64, color: Colors.blue),
-            SizedBox(height: 16),
-            Text('SmartCare',
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.health_and_safety_rounded,
+                  size: 64, color: Colors.white),
+            ),
+            const SizedBox(height: 24),
+            const Text('SmartCare',
                 style: TextStyle(
-                    fontSize: 24, fontWeight: FontWeight.bold)),
-            SizedBox(height: 24),
-            CircularProgressIndicator(),
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: 0.5)),
+            const SizedBox(height: 6),
+            const Text('AI Powered Health Assistant',
+                style: TextStyle(color: Colors.white70, fontSize: 14)),
+            const SizedBox(height: 48),
+            const CircularProgressIndicator(
+                color: Colors.white, strokeWidth: 2.5),
           ],
         ),
       ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../theme/app_theme.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -10,213 +11,286 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final nameController = TextEditingController();        // NEW: name field
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
-  final confirmPasswordController = TextEditingController(); // NEW: confirm
+  final _nameCtrl     = TextEditingController();
+  final _emailCtrl    = TextEditingController();
+  final _passCtrl     = TextEditingController();
+  final _confirmCtrl  = TextEditingController();
 
-  bool isLoading = false;
-  bool obscurePassword = true;                           // NEW: show/hide toggle
+  bool _isLoading     = false;
+  bool _obscurePass   = true;
+  bool _obscureConf   = true;
+  bool _acceptTerms   = false;
+  String? _errorMsg;
 
   @override
   void dispose() {
-    nameController.dispose();
-    emailController.dispose();
-    passwordController.dispose();
-    confirmPasswordController.dispose();
+    _nameCtrl.dispose(); _emailCtrl.dispose();
+    _passCtrl.dispose(); _confirmCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> registerUser() async {
-    final name = nameController.text.trim();
-    final email = emailController.text.trim();
-    final password = passwordController.text.trim();
-    final confirmPassword = confirmPasswordController.text.trim();
+  Future<void> _register() async {
+    setState(() => _errorMsg = null);
+    final name  = _nameCtrl.text.trim();
+    final email = _emailCtrl.text.trim();
+    final pass  = _passCtrl.text.trim();
+    final conf  = _confirmCtrl.text.trim();
 
-    // ── Validation ──────────────────────────────────────────────────────
-    if (name.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
-      _showSnack("All fields are required");
+    if (name.isEmpty || email.isEmpty || pass.isEmpty || conf.isEmpty) {
+      setState(() => _errorMsg = 'All fields are required');
       return;
     }
-
-    if (name.length < 2) {
-      _showSnack("Please enter your full name");
-      return;
-    }
-
     if (!email.contains('@')) {
-      _showSnack("Enter a valid email address");
+      setState(() => _errorMsg = 'Enter a valid email address');
+      return;
+    }
+    if (pass.length < 8) {
+      setState(() => _errorMsg = 'Password must be at least 8 characters');
+      return;
+    }
+    if (pass != conf) {
+      setState(() => _errorMsg = 'Passwords do not match');
+      return;
+    }
+    if (!_acceptTerms) {
+      setState(() => _errorMsg = 'Please accept the terms to continue');
       return;
     }
 
-    if (password.length < 6) {
-      _showSnack("Password must be at least 6 characters");
-      return;
-    }
-
-    if (password != confirmPassword) {
-      _showSnack("Passwords do not match");
-      return;
-    }
-
-    setState(() => isLoading = true);
-
+    setState(() => _isLoading = true);
     try {
-      // Step 1: Create Firebase Auth account
-      UserCredential userCredential =
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      final cred = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: email, password: pass);
 
-      // Step 2: Save user data in Firestore
-      // Role is ALWAYS 'patient' for self-registration — doctors are added by Admin
       await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userCredential.user!.uid)
-          .set({
-        'uid': userCredential.user!.uid,
-        'name': name,           // Now saving name
+          .collection('users').doc(cred.user!.uid).set({
+        'uid': cred.user!.uid,
+        'name': name,
         'email': email,
-        'role': 'patient',      // Hard-coded — patients cannot choose their role
+        'role': 'patient',
         'createdAt': FieldValue.serverTimestamp(),
         'isActive': true,
       });
 
-      _showSnack("Account created successfully!");
-
-      // Go back to login screen
-      if (mounted) Navigator.pop(context);
-
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'email-already-in-use') {
-        _showSnack("This email is already registered");
-      } else if (e.code == 'weak-password') {
-        _showSnack("Password is too weak");
-      } else {
-        _showSnack("Registration failed: ${e.message}");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Account created successfully!'),
+            backgroundColor: AppColors.success));
+        Navigator.pop(context);
       }
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        if (e.code == 'email-already-in-use') _errorMsg = 'Email already registered';
+        else if (e.code == 'weak-password')   _errorMsg = 'Password is too weak';
+        else _errorMsg = 'Registration failed: ${e.message}';
+      });
     } catch (e) {
-      _showSnack("Something went wrong. Please try again.");
+      setState(() => _errorMsg = e.toString());
     }
-
-    setState(() => isLoading = false);
-  }
-
-  void _showSnack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    if (mounted) setState(() => _isLoading = false);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Create Account")),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        foregroundColor: AppColors.textPrimary,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Create Account',
+                  style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary)),
+              const SizedBox(height: 4),
+              const Text('Patient registration — free & secure',
+                  style: TextStyle(
+                      color: AppColors.textSecondary, fontSize: 14)),
+              const SizedBox(height: 28),
 
-      body: SingleChildScrollView(   // Prevents overflow on small screens
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+              // Error banner
+              if (_errorMsg != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.error.withOpacity(0.3)),
+                  ),
+                  child: Row(children: [
+                    const Icon(Icons.error_outline, color: AppColors.error, size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(_errorMsg!,
+                        style: const TextStyle(color: AppColors.error, fontSize: 13))),
+                  ]),
+                ),
+              ],
 
-            const SizedBox(height: 20),
+              // Full Name
+              TextField(controller: _nameCtrl,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                      labelText: 'Full Name',
+                      prefixIcon: Icon(Icons.person_outline, size: 20))),
+              const SizedBox(height: 14),
 
-            // ── Full Name ────────────────────────────────────────────────
-            TextField(
-              controller: nameController,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: "Full Name",
-                prefixIcon: Icon(Icons.person_outline),
-                border: OutlineInputBorder(),
-              ),
-            ),
+              // Email
+              TextField(controller: _emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                      labelText: 'Email Address',
+                      prefixIcon: Icon(Icons.email_outlined, size: 20))),
+              const SizedBox(height: 14),
 
-            const SizedBox(height: 14),
-
-            // ── Email ────────────────────────────────────────────────────
-            TextField(
-              controller: emailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: "Email Address",
-                prefixIcon: Icon(Icons.email_outlined),
-                border: OutlineInputBorder(),
-              ),
-            ),
-
-            const SizedBox(height: 14),
-
-            // ── Password ─────────────────────────────────────────────────
-            TextField(
-              controller: passwordController,
-              obscureText: obscurePassword,
-              decoration: InputDecoration(
-                labelText: "Password",
-                prefixIcon: const Icon(Icons.lock_outline),
-                border: const OutlineInputBorder(),
-                suffixIcon: IconButton(
-                  icon: Icon(obscurePassword
-                      ? Icons.visibility_off
-                      : Icons.visibility),
-                  onPressed: () =>
-                      setState(() => obscurePassword = !obscurePassword),
+              // Password
+              TextField(
+                controller: _passCtrl,
+                obscureText: _obscurePass,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscurePass
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                        size: 20, color: AppColors.textSecondary),
+                    onPressed: () => setState(() => _obscurePass = !_obscurePass),
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(height: 14),
 
-            const SizedBox(height: 14),
-
-            // ── Confirm Password ─────────────────────────────────────────
-            TextField(
-              controller: confirmPasswordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: "Confirm Password",
-                prefixIcon: Icon(Icons.lock_outline),
-                border: OutlineInputBorder(),
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // ── Register Button ──────────────────────────────────────────
-            isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : ElevatedButton(
-                    onPressed: registerUser,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: const Text("Create Account", style: TextStyle(fontSize: 16)),
+              // Confirm Password
+              TextField(
+                controller: _confirmCtrl,
+                obscureText: _obscureConf,
+                decoration: InputDecoration(
+                  labelText: 'Confirm Password',
+                  prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscureConf
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                        size: 20, color: AppColors.textSecondary),
+                    onPressed: () => setState(() => _obscureConf = !_obscureConf),
                   ),
-
-            const SizedBox(height: 12),
-
-            // ── Back to Login ────────────────────────────────────────────
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Already have an account? Login"),
-            ),
-
-            // ── Medical disclaimer ───────────────────────────────────────
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.amber.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.amber.shade200),
+                ),
               ),
-              child: const Text(
-                "⚠️ SmartCare provides wellness suggestions only. "
-                "It does not diagnose or prescribe. Always consult a doctor.",
-                style: TextStyle(fontSize: 12, color: Colors.brown),
-                textAlign: TextAlign.center,
+              const SizedBox(height: 16),
+
+              // Terms checkbox
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Checkbox(
+                    value: _acceptTerms,
+                    activeColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4)),
+                    onChanged: (v) => setState(() => _acceptTerms = v ?? false),
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: RichText(
+                        text: const TextSpan(
+                          style: TextStyle(
+                              color: AppColors.textSecondary, fontSize: 13),
+                          children: [
+                            TextSpan(text: 'I agree to the '),
+                            TextSpan(text: 'Terms of Service',
+                                style: TextStyle(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w600)),
+                            TextSpan(text: ' and '),
+                            TextSpan(text: 'Privacy Policy',
+                                style: TextStyle(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
+
+              const SizedBox(height: 8),
+
+              // Disclaimer
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFBEB),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFFCD34D)),
+                ),
+                child: const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline,
+                        color: Color(0xFFD97706), size: 16),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'SmartCare provides wellness suggestions only. '
+                        'It does not diagnose or prescribe. Always consult a doctor.',
+                        style: TextStyle(
+                            fontSize: 12, color: Color(0xFF92400E)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Register button
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _register,
+                  child: _isLoading
+                      ? const SizedBox(width: 22, height: 22,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2.5))
+                      : const Text('Create Account',
+                          style: TextStyle(fontSize: 16)),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+              Center(
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: const Text.rich(TextSpan(children: [
+                    TextSpan(text: 'Already have an account? ',
+                        style: TextStyle(
+                            color: AppColors.textSecondary, fontSize: 14)),
+                    TextSpan(text: 'Sign In',
+                        style: TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14)),
+                  ])),
+                ),
+              ),
+              const SizedBox(height: 32),
+            ],
+          ),
         ),
       ),
     );

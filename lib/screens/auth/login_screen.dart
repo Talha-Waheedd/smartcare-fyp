@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
+import '../../theme/app_theme.dart';
 import 'register_screen.dart';
 import '../patient/patient_screen.dart';
 import '../doctor/doctor_screen.dart';
@@ -15,259 +15,298 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
-
-  bool isLoading = false;
-  bool obscurePassword = true;
+  final _emailController    = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading      = false;
+  bool _obscurePass    = true;
+  String? _errorMsg;
 
   @override
   void dispose() {
-    emailController.dispose();
-    passwordController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
-  Future<void> loginUser() async {
-    final email = emailController.text.trim();
-    final password = passwordController.text.trim();
+  Future<void> _login() async {
+    setState(() { _errorMsg = null; });
+    final email    = _emailController.text.trim();
+    final password = _passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
-      _showSnack("Please enter email and password");
+      setState(() => _errorMsg = 'Please enter email and password');
       return;
     }
 
-    if (!email.contains('@')) {
-      _showSnack("Enter a valid email address");
-      return;
-    }
-
-    setState(() => isLoading = true);
-
+    setState(() => _isLoading = true);
     try {
-      // Step 1: Sign in with Firebase Auth
-      UserCredential userCredential =
-          await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: email, password: password);
 
-      // Step 2: Fetch Firestore document
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userCredential.user!.uid)
-          .get();
+      final doc = await FirebaseFirestore.instance
+          .collection('users').doc(cred.user!.uid).get();
 
-      if (!userDoc.exists) {
-        _showSnack("Account data not found. Please contact support.");
+      if (!doc.exists) {
         await FirebaseAuth.instance.signOut();
-        setState(() => isLoading = false);
+        setState(() => _errorMsg = 'Account data not found. Contact support.');
         return;
       }
 
-      // ✅ FIX: Use safe null-aware access instead of direct map access
-      // Direct access like userDoc['isActive'] throws if field doesn't exist
-      final data = userDoc.data() as Map<String, dynamic>;
-      final isActive = data['isActive'];   // returns null if field missing
-
-      // Only block if explicitly set to false — null means old account, allow it
+      final data     = doc.data() as Map<String, dynamic>;
+      final isActive = data['isActive'];
       if (isActive == false) {
-        _showSnack("Your account has been deactivated. Contact admin.");
         await FirebaseAuth.instance.signOut();
-        setState(() => isLoading = false);
+        setState(() => _errorMsg = 'Account deactivated. Contact admin.');
         return;
       }
 
-      // Step 3: Get role safely
       final role = (data['role'] as String?) ?? 'patient';
-
       if (!mounted) return;
 
-      // Step 4: Route to dashboard
-      if (role == 'doctor') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const DoctorScreen()),
-        );
-      } else if (role == 'admin') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const AdminScreen()),
-        );
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const PatientScreen()),
-        );
-      }
+      Widget destination;
+      if (role == 'doctor')      destination = const DoctorScreen();
+      else if (role == 'admin')  destination = const AdminScreen();
+      else                       destination = const PatientScreen();
+
+      Navigator.pushAndRemoveUntil(context,
+          MaterialPageRoute(builder: (_) => destination), (_) => false);
 
     } on FirebaseAuthException catch (e) {
-      String message;
-      switch (e.code) {
-        case 'user-not-found':
-          message = "No account found with this email";
-          break;
-        case 'wrong-password':
-          message = "Incorrect password. Please try again";
-          break;
-        case 'invalid-email':
-          message = "Invalid email address";
-          break;
-        case 'invalid-credential':
-          // Firebase v4+ uses this code for wrong email/password combination
-          message = "Incorrect email or password";
-          break;
-        case 'user-disabled':
-          message = "This account has been disabled";
-          break;
-        case 'too-many-requests':
-          message = "Too many attempts. Please wait and try again";
-          break;
-        default:
-          message = "Login failed (${e.code})";
-      }
-      _showSnack(message);
+      setState(() {
+        switch (e.code) {
+          case 'user-not-found':     _errorMsg = 'No account found with this email'; break;
+          case 'wrong-password':     _errorMsg = 'Incorrect password'; break;
+          case 'invalid-credential': _errorMsg = 'Incorrect email or password'; break;
+          case 'too-many-requests':  _errorMsg = 'Too many attempts. Please wait'; break;
+          default:                   _errorMsg = 'Login failed (${e.code})';
+        }
+      });
     } catch (e) {
-      // Show the actual error in debug so you can see what's happening
-      debugPrint("Login error: $e");
-      _showSnack("Error: ${e.toString()}");  // Temporarily show real error
+      setState(() => _errorMsg = e.toString());
     }
-
-    if (mounted) setState(() => isLoading = false);
+    if (mounted) setState(() => _isLoading = false);
   }
 
-  void showForgotPasswordDialog() {
-    final resetEmailController = TextEditingController();
-
+  void _showForgotPassword() {
+    final ctrl = TextEditingController();
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Reset Password"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text("Enter your email to receive a reset link."),
-            const SizedBox(height: 12),
-            TextField(
-              controller: resetEmailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: "Email Address",
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Reset Password'),
+        content: TextField(
+          controller: ctrl,
+          keyboardType: TextInputType.emailAddress,
+          decoration: const InputDecoration(
+              labelText: 'Email Address', prefixIcon: Icon(Icons.email_outlined)),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(minimumSize: const Size(100, 40)),
             onPressed: () async {
-              final resetEmail = resetEmailController.text.trim();
-              if (resetEmail.isEmpty) return;
-              try {
-                await FirebaseAuth.instance
-                    .sendPasswordResetEmail(email: resetEmail);
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  _showSnack("Reset email sent! Check your inbox.");
-                }
-              } catch (e) {
-                _showSnack("Could not send reset email.");
+              if (ctrl.text.trim().isEmpty) return;
+              await FirebaseAuth.instance.sendPasswordResetEmail(email: ctrl.text.trim());
+              if (context.mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Reset link sent! Check your inbox.')));
               }
             },
-            child: const Text("Send Link"),
+            child: const Text('Send Link'),
           ),
         ],
       ),
     );
   }
 
-  void _showSnack(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("SmartCare Login")),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 30),
-            const Icon(Icons.health_and_safety, size: 64, color: Colors.blue),
-            const SizedBox(height: 8),
-            const Text(
-              "SmartCare",
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 30),
-            TextField(
-              controller: emailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: "Email Address",
-                prefixIcon: Icon(Icons.email_outlined),
-                border: OutlineInputBorder(),
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(height: 56),
+
+              // ── Logo ──────────────────────────────────────────────────
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.primary, AppColors.primaryDark],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.35),
+                      blurRadius: 20, offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.health_and_safety_rounded,
+                    size: 52, color: Colors.white),
               ),
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: passwordController,
-              obscureText: obscurePassword,
-              decoration: InputDecoration(
-                labelText: "Password",
-                prefixIcon: const Icon(Icons.lock_outline),
-                border: const OutlineInputBorder(),
-                suffixIcon: IconButton(
-                  icon: Icon(obscurePassword
-                      ? Icons.visibility_off
-                      : Icons.visibility),
-                  onPressed: () =>
-                      setState(() => obscurePassword = !obscurePassword),
+              const SizedBox(height: 20),
+              const Text('SmartCare',
+                  style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                      letterSpacing: 0.3)),
+              const Text('AI Powered Health Assistant',
+                  style: TextStyle(
+                      fontSize: 13, color: AppColors.textSecondary)),
+
+              const SizedBox(height: 40),
+
+              // ── Card ──────────────────────────────────────────────────
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: AppColors.border),
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 20, offset: const Offset(0, 4)),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Welcome back',
+                        style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary)),
+                    const SizedBox(height: 4),
+                    const Text('Sign in to your account',
+                        style: TextStyle(
+                            color: AppColors.textSecondary, fontSize: 13)),
+                    const SizedBox(height: 24),
+
+                    // Error banner
+                    if (_errorMsg != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                              color: AppColors.error.withOpacity(0.3)),
+                        ),
+                        child: Row(children: [
+                          const Icon(Icons.error_outline,
+                              color: AppColors.error, size: 16),
+                          const SizedBox(width: 8),
+                          Expanded(
+                              child: Text(_errorMsg!,
+                                  style: const TextStyle(
+                                      color: AppColors.error, fontSize: 13))),
+                        ]),
+                      ),
+                    ],
+
+                    // Email
+                    TextField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(
+                        labelText: 'Email Address',
+                        prefixIcon: Icon(Icons.email_outlined, size: 20),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Password
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: _obscurePass,
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        prefixIcon:
+                            const Icon(Icons.lock_outline, size: 20),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                              _obscurePass
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              size: 20, color: AppColors.textSecondary),
+                          onPressed: () =>
+                              setState(() => _obscurePass = !_obscurePass),
+                        ),
+                      ),
+                    ),
+
+                    // Forgot password
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _showForgotPassword,
+                        child: const Text('Forgot Password?',
+                            style: TextStyle(
+                                color: AppColors.primary, fontSize: 13)),
+                      ),
+                    ),
+
+                    const SizedBox(height: 4),
+
+                    // Login button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _login,
+                        child: _isLoading
+                            ? const SizedBox(width: 22, height: 22,
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2.5))
+                            : const Text('Sign In',
+                                style: TextStyle(fontSize: 16)),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: showForgotPasswordDialog,
-                child: const Text("Forgot Password?"),
-              ),
-            ),
-            const SizedBox(height: 8),
-            isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : ElevatedButton(
-                    onPressed: loginUser,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: const Text("Login", style: TextStyle(fontSize: 16)),
+
+              const SizedBox(height: 20),
+
+              // Register link
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text("Don't have an account? ",
+                      style: TextStyle(
+                          color: AppColors.textSecondary, fontSize: 14)),
+                  GestureDetector(
+                    onTap: () => Navigator.push(context,
+                        MaterialPageRoute(
+                            builder: (_) => const RegisterScreen())),
+                    child: const Text('Register',
+                        style: TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14)),
                   ),
-            const SizedBox(height: 12),
-            TextButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                ],
               ),
-              child: const Text("Don't have an account? Register"),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              "Doctors: Contact your administrator for account access.",
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 11, color: Colors.grey),
-            ),
-          ],
+              const SizedBox(height: 8),
+              const Text(
+                'Doctors: Contact your administrator for access.',
+                style: TextStyle(
+                    color: AppColors.textHint, fontSize: 11),
+              ),
+              const SizedBox(height: 32),
+            ],
+          ),
         ),
       ),
     );
