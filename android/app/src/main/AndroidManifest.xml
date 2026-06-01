@@ -2,27 +2,43 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- ── Notification Permissions ───────────────────────────────────── -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
-    <!-- ─────────────────────────────────────────────────────────────── -->
-
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
 
-
+    <!-- ✅ queries MUST be here — direct child of manifest, NOT inside application -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="http"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:mimeType="application/pdf"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:mimeType="image/*"/>
+        </intent>
+    </queries>
 
     <application
         android:label="smartcare_app"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
-        <!-- FCM default notification channel -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="medication_reminders" />
+            android:value="medication_reminders"/>
 
         <activity
             android:name=".MainActivity"
@@ -33,14 +49,6 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
-
-            <queries>
-                <intent>
-                    <action android:name="android.intent.action.VIEW" />
-                    <data android:scheme="https" />
-                </intent>
-            </queries>
-            
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme"/>
@@ -50,7 +58,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Required for flutter_local_notifications scheduled reminders -->
         <receiver
             android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"
             android:exported="false"/>

@@ -1,50 +1,66 @@
-// ─────────────────────────────────────────────────────────────────────────────
 // FILE: lib/screens/admin/admin_screen.dart
-// PURPOSE: Full Admin Panel — Phase 4
-//   - Stats (total users, doctors, patients)
-//   - Full user list with role badges
-//   - Change user roles via popup menu
-//   - Activate / Deactivate users
-//   - Add Doctor (uses secondary Firebase app so admin stays logged in)
-// ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../theme/app_theme.dart';
 import '../auth/login_screen.dart';
 
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key});
-
   @override
   State<AdminScreen> createState() => _AdminScreenState();
 }
 
 class _AdminScreenState extends State<AdminScreen> {
-  final _searchController = TextEditingController();
+  final _searchCtrl = TextEditingController();
   String _searchQuery = '';
-  String _filterRole = 'all'; // 'all', 'patient', 'doctor', 'admin'
+  String _filterRole = 'all';
+
+  static const _c1 = Color(0xFF7C3AED);
+  static const _c2 = Color(0xFF6D28D9);
 
   @override
   void dispose() {
-    _searchController.dispose();
+    _searchCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _logout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16)),
+        title: const Text('Sign out?'),
+        content:
+            const Text('You will be returned to the login screen.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                minimumSize: const Size(80, 40)),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sign Out',
+                style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
     await FirebaseAuth.instance.signOut();
     if (mounted) {
       Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (route) => false,
-      );
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (_) => false);
     }
   }
 
-  // ── Add Doctor using secondary Firebase app ────────────────────────────────
-  // Critical: Using secondary app prevents admin from being logged out
   void _showAddDoctorDialog() {
     final nameCtrl = TextEditingController();
     final emailCtrl = TextEditingController();
@@ -52,93 +68,89 @@ class _AdminScreenState extends State<AdminScreen> {
 
     showDialog(
       context: context,
-      builder: (dialogCtx) {
-        bool isLoading = false;
-        return StatefulBuilder(
-          builder: (dialogCtx, setDialog) => AlertDialog(
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setDialog) {
+          bool isLoading = false;
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16)),
             title: const Text('Add New Doctor'),
             content: SingleChildScrollView(
               child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: nameCtrl,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: const InputDecoration(
-                      labelText: "Doctor's Full Name",
-                      prefixIcon: Icon(Icons.person_outline),
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: emailCtrl,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'Email Address',
-                      prefixIcon: Icon(Icons.email_outlined),
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: passCtrl,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Temporary Password',
-                      prefixIcon: Icon(Icons.lock_outline),
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ],
-              ),
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                        controller: nameCtrl,
+                        textCapitalization:
+                            TextCapitalization.words,
+                        decoration: const InputDecoration(
+                            labelText: "Doctor's Full Name",
+                            prefixIcon:
+                                Icon(Icons.person_outline))),
+                    const SizedBox(height: 12),
+                    TextField(
+                        controller: emailCtrl,
+                        keyboardType:
+                            TextInputType.emailAddress,
+                        decoration: const InputDecoration(
+                            labelText: 'Email Address',
+                            prefixIcon:
+                                Icon(Icons.email_outlined))),
+                    const SizedBox(height: 12),
+                    TextField(
+                        controller: passCtrl,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                            labelText: 'Temporary Password',
+                            prefixIcon:
+                                Icon(Icons.lock_outline))),
+                  ]),
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(dialogCtx),
-                child: const Text('Cancel'),
-              ),
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel')),
               ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: _c1,
+                    minimumSize: const Size(100, 40)),
                 onPressed: isLoading
                     ? null
                     : () async {
                         final name = nameCtrl.text.trim();
                         final email = emailCtrl.text.trim();
                         final pass = passCtrl.text.trim();
-
-                        if (name.isEmpty || email.isEmpty || pass.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('All fields are required')),
-                          );
+                        if (name.isEmpty ||
+                            email.isEmpty ||
+                            pass.isEmpty) {
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(const SnackBar(
+                                  content: Text(
+                                      'All fields required')));
                           return;
                         }
                         if (pass.length < 6) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Password min 6 characters')),
-                          );
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(const SnackBar(
+                                  content: Text(
+                                      'Password min 6 chars')));
                           return;
                         }
-
                         setDialog(() => isLoading = true);
                         FirebaseApp? secondaryApp;
-
                         try {
-                          // Secondary app keeps admin session intact
-                          secondaryApp = await Firebase.initializeApp(
-                            name: 'secondaryApp',
-                            options: Firebase.app().options,
-                          );
-                          final secondaryAuth =
-                              FirebaseAuth.instanceFor(app: secondaryApp);
-
-                          final cred = await secondaryAuth
+                          secondaryApp =
+                              await Firebase.initializeApp(
+                                  name: 'secondaryApp',
+                                  options:
+                                      Firebase.app().options);
+                          final auth =
+                              FirebaseAuth.instanceFor(
+                                  app: secondaryApp);
+                          final cred = await auth
                               .createUserWithEmailAndPassword(
-                            email: email,
-                            password: pass,
-                          );
-
+                                  email: email,
+                                  password: pass);
                           await FirebaseFirestore.instance
                               .collection('users')
                               .doc(cred.user!.uid)
@@ -147,33 +159,36 @@ class _AdminScreenState extends State<AdminScreen> {
                             'name': name,
                             'email': email,
                             'role': 'doctor',
-                            'createdAt': FieldValue.serverTimestamp(),
+                            'createdAt':
+                                FieldValue.serverTimestamp(),
                             'isActive': true,
                           });
-
-                          await secondaryAuth.signOut();
-
-                          if (dialogCtx.mounted) {
-                            Navigator.pop(dialogCtx);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content:
-                                      Text('Dr. $name added successfully!'),
-                                  backgroundColor: Colors.green),
-                            );
+                          await auth.signOut();
+                          if (ctx.mounted) {
+                            Navigator.pop(ctx);
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(SnackBar(
+                                    content: Text(
+                                        'Dr. $name added!'),
+                                    backgroundColor:
+                                        AppColors.success));
                           }
                         } on FirebaseAuthException catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                                content: Text(
-                                    e.code == 'email-already-in-use'
-                                        ? 'Email already registered'
-                                        : 'Error: ${e.message}')),
-                          );
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(SnackBar(
+                                  content: Text(
+                                      e.code ==
+                                              'email-already-in-use'
+                                          ? 'Email already registered'
+                                          : 'Error: ${e.message}'),
+                                  backgroundColor:
+                                      AppColors.error));
                         } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error: $e')),
-                          );
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(SnackBar(
+                                  content: Text('Error: $e'),
+                                  backgroundColor:
+                                      AppColors.error));
                         } finally {
                           await secondaryApp?.delete();
                           setDialog(() => isLoading = false);
@@ -183,180 +198,12 @@ class _AdminScreenState extends State<AdminScreen> {
                     ? const SizedBox(
                         width: 16,
                         height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Add Doctor'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-      appBar: AppBar(
-        title: const Text('Admin Panel'),
-        backgroundColor: Colors.deepPurple,
-        foregroundColor: Colors.white,
-        automaticallyImplyLeading: false,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _logout,
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddDoctorDialog,
-        icon: const Icon(Icons.person_add),
-        label: const Text('Add Doctor'),
-        backgroundColor: Colors.deepPurple,
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('users').snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final allDocs = snapshot.data!.docs;
-          final allUsers = allDocs
-              .map((d) => {'id': d.id, ...d.data() as Map<String, dynamic>})
-              .toList();
-
-          // Count stats
-          final totalDoctors =
-              allUsers.where((u) => u['role'] == 'doctor').length;
-          final totalPatients =
-              allUsers.where((u) => u['role'] == 'patient').length;
-          final totalAdmins =
-              allUsers.where((u) => u['role'] == 'admin').length;
-
-          // Apply role filter
-          var filtered = _filterRole == 'all'
-              ? allUsers
-              : allUsers.where((u) => u['role'] == _filterRole).toList();
-
-          // Apply search filter
-          if (_searchQuery.isNotEmpty) {
-            filtered = filtered.where((u) {
-              final name = (u['name'] as String? ?? '').toLowerCase();
-              final email = (u['email'] as String? ?? '').toLowerCase();
-              return name.contains(_searchQuery) ||
-                  email.contains(_searchQuery);
-            }).toList();
-          }
-
-          return Column(
-            children: [
-              // ── Header ───────────────────────────────────────────────
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-                decoration: const BoxDecoration(
-                  color: Colors.deepPurple,
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(24),
-                    bottomRight: Radius.circular(24),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('System Overview',
-                        style: TextStyle(
-                            color: Colors.white70, fontSize: 13)),
-                    const SizedBox(height: 12),
-                    // Stats row
-                    Row(
-                      children: [
-                        _statChip('${allUsers.length}', 'Total', Colors.white),
-                        const SizedBox(width: 8),
-                        _statChip('$totalDoctors', 'Doctors', Colors.blue.shade200),
-                        const SizedBox(width: 8),
-                        _statChip('$totalPatients', 'Patients', Colors.green.shade200),
-                        const SizedBox(width: 8),
-                        _statChip('$totalAdmins', 'Admins', Colors.orange.shade200),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              // ── Search + Filter ──────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: (v) =>
-                      setState(() => _searchQuery = v.toLowerCase()),
-                  decoration: InputDecoration(
-                    hintText: 'Search by name or email...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => _searchQuery = '');
-                            })
-                        : null,
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-              ),
-
-              // Role filter chips
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 6),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: ['all', 'patient', 'doctor', 'admin']
-                        .map((role) => Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: ChoiceChip(
-                                label: Text(role == 'all'
-                                    ? 'All'
-                                    : role[0].toUpperCase() +
-                                        role.substring(1)),
-                                selected: _filterRole == role,
-                                onSelected: (_) =>
-                                    setState(() => _filterRole = role),
-                                selectedColor:
-                                    Colors.deepPurple.shade100,
-                              ),
-                            ))
-                        .toList(),
-                  ),
-                ),
-              ),
-
-              // ── User List ────────────────────────────────────────────
-              Expanded(
-                child: filtered.isEmpty
-                    ? const Center(
-                        child: Text('No users found.',
-                            style: TextStyle(color: Colors.grey)))
-                    : ListView.builder(
-                        padding:
-                            const EdgeInsets.fromLTRB(12, 4, 12, 100),
-                        itemCount: filtered.length,
-                        itemBuilder: (context, index) {
-                          return _buildUserCard(filtered[index]);
-                        },
-                      ),
+                        child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2))
+                    : const Text('Add Doctor',
+                        style:
+                            TextStyle(color: Colors.white)),
               ),
             ],
           );
@@ -365,137 +212,377 @@ class _AdminScreenState extends State<AdminScreen> {
     );
   }
 
-  Widget _buildUserCard(Map<String, dynamic> user) {
-    final userId = user['id'] as String;
-    final name = (user['name'] as String?) ?? 'Unknown';
-    final email = (user['email'] as String?) ?? '';
-    final role = (user['role'] as String?) ?? 'patient';
-    final isActive = (user['isActive'] as bool?) ?? true;
-
-    Color roleColor;
-    if (role == 'admin') roleColor = Colors.deepPurple;
-    else if (role == 'doctor') roleColor = Colors.blue;
-    else roleColor = Colors.green;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        leading: CircleAvatar(
-          backgroundColor: roleColor.withOpacity(0.15),
-          child: Text(
-            name.isNotEmpty ? name[0].toUpperCase() : '?',
-            style: TextStyle(
-                color: roleColor, fontWeight: FontWeight.bold),
-          ),
-        ),
-        title: Text(
-          name,
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            decoration: isActive ? null : TextDecoration.lineThrough,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(email, style: const TextStyle(fontSize: 12)),
-            if (!isActive)
-              const Text('DEACTIVATED',
-                  style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.red,
-                      fontWeight: FontWeight.bold)),
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Role badge
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: roleColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                role.toUpperCase(),
-                style: TextStyle(
-                    color: roleColor,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold),
-              ),
-            ),
-            const SizedBox(width: 4),
-            // Options menu
-            PopupMenuButton<String>(
-              onSelected: (value) async {
-                if (value == 'activate' || value == 'deactivate') {
-                  await FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(userId)
-                      .update({'isActive': value == 'activate'});
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text(value == 'activate'
-                        ? '$name activated'
-                        : '$name deactivated'),
-                  ));
-                } else {
-                  // Role change
-                  await FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(userId)
-                      .update({'role': value});
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text('$name set as $value'),
-                  ));
-                }
-              },
-              itemBuilder: (_) => [
-                const PopupMenuItem(
-                    value: 'patient', child: Text('Set as Patient')),
-                const PopupMenuItem(
-                    value: 'doctor', child: Text('Set as Doctor')),
-                const PopupMenuItem(
-                    value: 'admin', child: Text('Set as Admin')),
-                const PopupMenuDivider(),
-                PopupMenuItem(
-                  value: isActive ? 'deactivate' : 'activate',
-                  child: Text(
-                    isActive ? 'Deactivate User' : 'Activate User',
-                    style: TextStyle(
-                        color: isActive ? Colors.red : Colors.green),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _statChip(String value, String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Text(value,
-              style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18)),
-          Text(label,
-              style: const TextStyle(color: Colors.white70, fontSize: 10)),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: _c1,
+        title: const Text('SmartCare Admin'),
+        automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+              icon: const Icon(Icons.logout),
+              onPressed: _logout),
         ],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showAddDoctorDialog,
+        icon: const Icon(Icons.person_add_outlined),
+        label: const Text('Add Doctor'),
+        backgroundColor: _c1,
+        foregroundColor: Colors.white,
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('users')
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(
+                child: CircularProgressIndicator(color: _c1));
+          }
+
+          final allUsers = snapshot.data!.docs
+              .map((d) => {
+                    'id': d.id,
+                    ...d.data() as Map<String, dynamic>
+                  })
+              .toList();
+
+          final totalDoctors =
+              allUsers.where((u) => u['role'] == 'doctor').length;
+          final totalPatients =
+              allUsers.where((u) => u['role'] == 'patient').length;
+          final totalAdmins =
+              allUsers.where((u) => u['role'] == 'admin').length;
+
+          var filtered = _filterRole == 'all'
+              ? allUsers
+              : allUsers
+                  .where((u) => u['role'] == _filterRole)
+                  .toList();
+
+          if (_searchQuery.isNotEmpty) {
+            filtered = filtered.where((u) {
+              final name =
+                  (u['name'] as String? ?? '').toLowerCase();
+              final email =
+                  (u['email'] as String? ?? '').toLowerCase();
+              return name.contains(_searchQuery) ||
+                  email.contains(_searchQuery);
+            }).toList();
+          }
+
+          return Column(children: [
+            // Gradient header
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                    colors: [_c1, _c2],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(28),
+                  bottomRight: Radius.circular(28),
+                ),
+              ),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('System Overview',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 14),
+                    Row(children: [
+                      _chip(
+                          '${allUsers.length}', 'Total', Colors.white),
+                      const SizedBox(width: 8),
+                      _chip('$totalDoctors', 'Doctors',
+                          const Color(0xFF7DD3F8)),
+                      const SizedBox(width: 8),
+                      _chip('$totalPatients', 'Patients',
+                          const Color(0xFF6EE7B7)),
+                      const SizedBox(width: 8),
+                      _chip('$totalAdmins', 'Admins',
+                          const Color(0xFFC4B5FD)),
+                    ]),
+                  ]),
+            ),
+
+            // Search
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+              child: TextField(
+                controller: _searchCtrl,
+                onChanged: (v) =>
+                    setState(() => _searchQuery = v.toLowerCase()),
+                decoration: InputDecoration(
+                  hintText: 'Search by name or email...',
+                  prefixIcon: const Icon(Icons.search,
+                      color: AppColors.textSecondary),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear,
+                              color: AppColors.textSecondary),
+                          onPressed: () {
+                            _searchCtrl.clear();
+                            setState(() => _searchQuery = '');
+                          })
+                      : null,
+                ),
+              ),
+            ),
+
+            // Filter chips
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 8),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: ['all', 'patient', 'doctor', 'admin']
+                      .map((role) {
+                    final selected = _filterRole == role;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        label: Text(role == 'all'
+                            ? 'All'
+                            : role[0].toUpperCase() +
+                                role.substring(1)),
+                        selected: selected,
+                        onSelected: (_) =>
+                            setState(() => _filterRole = role),
+                        selectedColor: _c1.withOpacity(0.15),
+                        checkmarkColor: _c1,
+                        labelStyle: TextStyle(
+                          color: selected
+                              ? _c1
+                              : AppColors.textSecondary,
+                          fontWeight: selected
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                          fontSize: 13,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+
+            // List
+            Expanded(
+              child: filtered.isEmpty
+                  ? Center(
+                      child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.people_outline,
+                            size: 48,
+                            color: Colors.grey.shade300),
+                        const SizedBox(height: 12),
+                        const Text('No users found',
+                            style: TextStyle(
+                                color: AppColors.textSecondary)),
+                      ],
+                    ))
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(
+                          16, 4, 16, 100),
+                      itemCount: filtered.length,
+                      itemBuilder: (_, i) {
+                        final u = filtered[i];
+                        final userId = u['id'] as String;
+                        final name =
+                            (u['name'] as String?) ?? 'Unknown';
+                        final email =
+                            (u['email'] as String?) ?? '';
+                        final role =
+                            (u['role'] as String?) ?? 'patient';
+                        final isActive =
+                            (u['isActive'] as bool?) ?? true;
+
+                        Color roleColor;
+                        if (role == 'admin') {
+                          roleColor = _c1;
+                        } else if (role == 'doctor') {
+                          roleColor = const Color(0xFF0891B2);
+                        } else {
+                          roleColor = AppColors.success;
+                        }
+
+                        return Container(
+                          margin:
+                              const EdgeInsets.only(bottom: 10),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius:
+                                BorderRadius.circular(14),
+                            border: Border.all(
+                                color: isActive
+                                    ? AppColors.border
+                                    : AppColors.error
+                                        .withOpacity(0.3)),
+                          ),
+                          child: ListTile(
+                            contentPadding:
+                                const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 6),
+                            leading: CircleAvatar(
+                              radius: 22,
+                              backgroundColor:
+                                  roleColor.withOpacity(0.12),
+                              child: Text(
+                                name.isNotEmpty
+                                    ? name[0].toUpperCase()
+                                    : '?',
+                                style: TextStyle(
+                                    color: roleColor,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            title: Row(children: [
+                              Expanded(
+                                  child: Text(name,
+                                      style: TextStyle(
+                                          fontWeight:
+                                              FontWeight.w600,
+                                          decoration: isActive
+                                              ? null
+                                              : TextDecoration
+                                                  .lineThrough))),
+                              Container(
+                                padding:
+                                    const EdgeInsets.symmetric(
+                                        horizontal: 7,
+                                        vertical: 3),
+                                decoration: BoxDecoration(
+                                  color:
+                                      roleColor.withOpacity(0.1),
+                                  borderRadius:
+                                      BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                    role.toUpperCase(),
+                                    style: TextStyle(
+                                        fontSize: 9,
+                                        color: roleColor,
+                                        fontWeight:
+                                            FontWeight.w700)),
+                              ),
+                            ]),
+                            subtitle: Text(email,
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color:
+                                        AppColors.textSecondary)),
+                            trailing: PopupMenuButton<String>(
+                              icon: const Icon(Icons.more_vert,
+                                  color:
+                                      AppColors.textSecondary),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(12)),
+                              onSelected: (value) async {
+                                if (value == 'activate' ||
+                                    value == 'deactivate') {
+                                  await FirebaseFirestore.instance
+                                      .collection('users')
+                                      .doc(userId)
+                                      .update({
+                                    'isActive':
+                                        value == 'activate'
+                                  });
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context)
+                                        .showSnackBar(SnackBar(
+                                            content: Text(value ==
+                                                    'activate'
+                                                ? '$name activated'
+                                                : '$name deactivated'),
+                                            backgroundColor: value ==
+                                                    'activate'
+                                                ? AppColors.success
+                                                : AppColors.error));
+                                  }
+                                } else {
+                                  await FirebaseFirestore.instance
+                                      .collection('users')
+                                      .doc(userId)
+                                      .update({'role': value});
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context)
+                                        .showSnackBar(SnackBar(
+                                            content: Text(
+                                                '$name set as $value'),
+                                            backgroundColor:
+                                                AppColors.success));
+                                  }
+                                }
+                              },
+                              itemBuilder: (_) => [
+                                const PopupMenuItem(
+                                    value: 'patient',
+                                    child:
+                                        Text('Set as Patient')),
+                                const PopupMenuItem(
+                                    value: 'doctor',
+                                    child: Text('Set as Doctor')),
+                                const PopupMenuItem(
+                                    value: 'admin',
+                                    child: Text('Set as Admin')),
+                                const PopupMenuDivider(),
+                                PopupMenuItem(
+                                  value: isActive
+                                      ? 'deactivate'
+                                      : 'activate',
+                                  child: Text(
+                                    isActive
+                                        ? 'Deactivate User'
+                                        : 'Activate User',
+                                    style: TextStyle(
+                                        color: isActive
+                                            ? AppColors.error
+                                            : AppColors.success),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ]);
+        },
+      ),
     );
   }
+
+  Widget _chip(String value, String label, Color textColor) =>
+      Container(
+        padding: const EdgeInsets.symmetric(
+            horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white24),
+        ),
+        child: Column(children: [
+          Text(value,
+              style: TextStyle(
+                  color: textColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20)),
+          Text(label,
+              style: const TextStyle(
+                  color: Colors.white70, fontSize: 10)),
+        ]),
+      );
 }

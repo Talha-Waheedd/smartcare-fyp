@@ -1,21 +1,24 @@
-// ─────────────────────────────────────────────────────────────────────────────
 // FILE: lib/screens/doctor/doctor_screen.dart
-// PURPOSE: Doctor's main dashboard showing:
-//   - Welcome header with doctor name
-//   - Stats row (total patients, total consultations)
-//   - Searchable patient list with tap to view details
-// ─────────────────────────────────────────────────────────────────────────────
+// SELF-CONTAINED: PatientDetailScreen is defined in this same file
+// This eliminates all import resolution errors
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/doctor_service.dart';
+import '../../models/medication_model.dart';
+import '../../models/consultation_model.dart';
+import '../../models/prescription_model.dart';
+import '../../theme/app_theme.dart';
 import '../auth/login_screen.dart';
-import 'patient_detail_screen.dart';
+import 'add_consultation_screen.dart';
+import 'add_prescription_screen.dart';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// DOCTOR DASHBOARD
+// ─────────────────────────────────────────────────────────────────────────────
 class DoctorScreen extends StatefulWidget {
   const DoctorScreen({super.key});
-
   @override
   State<DoctorScreen> createState() => _DoctorScreenState();
 }
@@ -23,10 +26,12 @@ class DoctorScreen extends StatefulWidget {
 class _DoctorScreenState extends State<DoctorScreen> {
   final _doctorService = DoctorService();
   final _searchController = TextEditingController();
-
   String _doctorName = '';
   String _doctorId = '';
   String _searchQuery = '';
+
+  static const _c1 = Color(0xFF0891B2);
+  static const _c2 = Color(0xFF0E7490);
 
   @override
   void initState() {
@@ -44,26 +49,44 @@ class _DoctorScreenState extends State<DoctorScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     _doctorId = user.uid;
-
     try {
       final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
+          .collection('users').doc(user.uid).get();
       final data = doc.data() as Map<String, dynamic>?;
-      setState(() {
-        _doctorName = (data?['name'] as String?) ?? 'Doctor';
-      });
+      setState(() => _doctorName = (data?['name'] as String?) ?? 'Doctor');
     } catch (_) {}
   }
 
   Future<void> _logout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Sign out?'),
+        content: const Text('You will be returned to the login screen.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                minimumSize: const Size(80, 40)),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sign Out',
+                style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
     await FirebaseAuth.instance.signOut();
     if (mounted) {
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (route) => false,
+        (_) => false,
       );
     }
   }
@@ -71,93 +94,176 @@ class _DoctorScreenState extends State<DoctorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
+        backgroundColor: _c1,
         title: const Text('SmartCare'),
-        backgroundColor: const Color(0xFF1565C0),
-        foregroundColor: Colors.white,
         automaticallyImplyLeading: false,
-        elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Logout',
-            onPressed: _logout,
-          ),
+          IconButton(icon: const Icon(Icons.logout), onPressed: _logout),
         ],
       ),
       body: Column(
         children: [
-          // ── Header ──────────────────────────────────────────────────────
-          _buildHeader(),
-
-          // ── Stats Row ───────────────────────────────────────────────────
-          _buildStatsRow(),
-
-          // ── Search Bar ──────────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (val) =>
-                  setState(() => _searchQuery = val.toLowerCase()),
-              decoration: InputDecoration(
-                hintText: 'Search patients...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _searchQuery = '');
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
+          // Header
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [_c1, _c2],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(28),
+                bottomRight: Radius.circular(28),
               ),
             ),
-          ),
-
-          // ── Section label ────────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('My Patients',
-                    style: TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.bold)),
-                const Spacer(),
-                StreamBuilder<List<Map<String, dynamic>>>(
-                  stream: _doctorService.getPatients(),
-                  builder: (context, snap) {
-                    final count = snap.data?.length ?? 0;
-                    return Text('$count total',
-                        style: const TextStyle(
-                            color: Colors.grey, fontSize: 13));
-                  },
+                const Text('Welcome back,',
+                    style: TextStyle(color: Colors.white70, fontSize: 14)),
+                const SizedBox(height: 4),
+                Text(
+                  _doctorName.isNotEmpty ? 'Dr. $_doctorName' : '...',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white30),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.medical_services_outlined,
+                          size: 12, color: Colors.white),
+                      SizedBox(width: 4),
+                      Text('DOCTOR',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1)),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
 
-          // ── Patient List ─────────────────────────────────────────────────
+          // Stats
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: StreamBuilder<List<Map<String, dynamic>>>(
+                    stream: _doctorService.getPatients(),
+                    builder: (_, snap) => _StatBox(
+                      icon: Icons.people_alt_outlined,
+                      value: '${snap.data?.length ?? 0}',
+                      label: 'Patients',
+                      color: _c1,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: StreamBuilder(
+                    stream: _doctorService
+                        .getDoctorConsultations(_doctorId),
+                    builder: (_, snap) => _StatBox(
+                      icon: Icons.note_alt_outlined,
+                      value:
+                          '${(snap.data as List?)?.length ?? 0}',
+                      label: 'Consultations',
+                      color: AppColors.success,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Search
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (v) =>
+                  setState(() => _searchQuery = v.toLowerCase()),
+              decoration: InputDecoration(
+                hintText: 'Search patients...',
+                prefixIcon: const Icon(Icons.search,
+                    color: AppColors.textSecondary),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear,
+                            color: AppColors.textSecondary),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        })
+                    : null,
+              ),
+            ),
+          ),
+
+          // Section label
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Row(
+              children: [
+                const Text('My Patients',
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary)),
+                const Spacer(),
+                StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: _doctorService.getPatients(),
+                  builder: (_, snap) => Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryLight,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${snap.data?.length ?? 0} total',
+                      style: const TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Patient list
           Expanded(
             child: StreamBuilder<List<Map<String, dynamic>>>(
               stream: _doctorService.getPatients(),
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                if (snapshot.connectionState ==
+                    ConnectionState.waiting) {
+                  return const Center(
+                      child: CircularProgressIndicator(color: _c1));
                 }
 
                 var patients = snapshot.data ?? [];
-
-                // Filter by search
                 if (_searchQuery.isNotEmpty) {
                   patients = patients.where((p) {
                     final name =
@@ -175,13 +281,15 @@ class _DoctorScreenState extends State<DoctorScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.people_outline,
-                            size: 64, color: Colors.grey.shade300),
+                            size: 64,
+                            color: Colors.grey.shade300),
                         const SizedBox(height: 12),
                         Text(
                           _searchQuery.isNotEmpty
                               ? 'No patients match "$_searchQuery"'
                               : 'No patients registered yet',
-                          style: const TextStyle(color: Colors.grey),
+                          style: const TextStyle(
+                              color: AppColors.textSecondary),
                         ),
                       ],
                     ),
@@ -189,47 +297,60 @@ class _DoctorScreenState extends State<DoctorScreen> {
                 }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                   itemCount: patients.length,
                   itemBuilder: (context, index) {
-                    final patient = patients[index];
+                    final p = patients[index];
                     final name =
-                        (patient['name'] as String?) ?? 'Unknown';
+                        (p['name'] as String?) ?? 'Unknown';
                     final email =
-                        (patient['email'] as String?) ?? '';
-                    final patientId = patient['id'] as String;
+                        (p['email'] as String?) ?? '';
+                    final patientId = p['id'] as String;
+                    final initial = name.isNotEmpty
+                        ? name[0].toUpperCase()
+                        : 'P';
 
-                    return Card(
+                    return Container(
                       margin: const EdgeInsets.only(bottom: 10),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.border),
+                      ),
                       child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
+                        contentPadding:
+                            const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
                         leading: CircleAvatar(
                           radius: 24,
                           backgroundColor:
-                              Colors.blue.shade100,
-                          child: Text(
-                            name.isNotEmpty
-                                ? name[0].toUpperCase()
-                                : 'P',
-                            style: const TextStyle(
-                              color: Colors.blue,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                            ),
-                          ),
+                              _c1.withOpacity(0.12),
+                          child: Text(initial,
+                              style: const TextStyle(
+                                  color: _c1,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18)),
                         ),
                         title: Text(name,
                             style: const TextStyle(
-                                fontWeight: FontWeight.w600)),
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary)),
                         subtitle: Text(email,
-                            style: const TextStyle(fontSize: 12)),
-                        trailing: const Icon(
-                            Icons.arrow_forward_ios,
-                            size: 14,
-                            color: Colors.grey),
+                            style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary)),
+                        trailing: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: _c1.withOpacity(0.08),
+                            borderRadius:
+                                BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                              Icons.arrow_forward_ios,
+                              size: 14,
+                              color: _c1),
+                        ),
                         onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -252,150 +373,603 @@ class _DoctorScreenState extends State<DoctorScreen> {
       ),
     );
   }
+}
 
-  // ── Header banner ──────────────────────────────────────────────────────────
-  Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-      decoration: const BoxDecoration(
-        color: Color(0xFF1565C0),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(24),
-          bottomRight: Radius.circular(24),
+// ─────────────────────────────────────────────────────────────────────────────
+// PATIENT DETAIL SCREEN — 3 tabs
+// ─────────────────────────────────────────────────────────────────────────────
+class PatientDetailScreen extends StatelessWidget {
+  final String patientId;
+  final String patientName;
+  final String doctorId;
+  final String doctorName;
+
+  const PatientDetailScreen({
+    super.key,
+    required this.patientId,
+    required this.patientName,
+    required this.doctorId,
+    required this.doctorName,
+  });
+
+  static const _c1 = Color(0xFF0891B2);
+
+  @override
+  Widget build(BuildContext context) {
+    final service = DoctorService();
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: _c1,
+          foregroundColor: Colors.white,
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(patientName,
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w600)),
+              const Text('Patient Record',
+                  style: TextStyle(
+                      fontSize: 11, color: Colors.white70)),
+            ],
+          ),
+          bottom: const TabBar(
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white60,
+            indicatorColor: Colors.white,
+            indicatorWeight: 3,
+            tabs: [
+              Tab(
+                  icon: Icon(Icons.medication_outlined, size: 18),
+                  text: 'Medications'),
+              Tab(
+                  icon: Icon(Icons.note_alt_outlined, size: 18),
+                  text: 'Consultations'),
+              Tab(
+                  icon:
+                      Icon(Icons.receipt_long_outlined, size: 18),
+                  text: 'Prescriptions'),
+            ],
+          ),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Welcome back,',
-              style: TextStyle(color: Colors.white70, fontSize: 14)),
-          const SizedBox(height: 2),
-          Text(
-            _doctorName.isNotEmpty ? 'Dr. $_doctorName' : '...',
-            style: const TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 6),
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white24,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Text('DOCTOR',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    letterSpacing: 1.2,
-                    fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── Stats row ──────────────────────────────────────────────────────────────
-  Widget _buildStatsRow() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          // Total patients
-          Expanded(
-            child: StreamBuilder<List<Map<String, dynamic>>>(
-              stream: _doctorService.getPatients(),
-              builder: (context, snap) {
-                final count = snap.data?.length ?? 0;
-                return _StatCard(
-                  icon: Icons.people,
-                  label: 'Patients',
-                  value: '$count',
-                  color: Colors.blue,
-                );
-              },
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Total consultations by this doctor
-          Expanded(
-            child: StreamBuilder(
+        body: TabBarView(
+          children: [
+            // Tab 1: Medications
+            _MedicationsTab(
+                stream:
+                    service.getPatientMedications(patientId)),
+            // Tab 2: Consultations
+            _ConsultationsTab(
               stream:
-                  _doctorService.getDoctorConsultations(_doctorId),
-              builder: (context, snap) {
-                final count =
-                    (snap.data as List?)?.length ?? 0;
-                return _StatCard(
-                  icon: Icons.note_alt_outlined,
-                  label: 'Consultations',
-                  value: '$count',
-                  color: Colors.green,
-                );
-              },
+                  service.getPatientConsultations(patientId),
+              onAdd: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AddConsultationScreen(
+                    patientId: patientId,
+                    patientName: patientName,
+                    doctorId: doctorId,
+                    doctorName: doctorName,
+                  ),
+                ),
+              ),
             ),
-          ),
-        ],
+            // Tab 3: Prescriptions
+            _PrescriptionsTab(
+              stream:
+                  service.getPatientPrescriptions(patientId),
+              onAdd: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AddPrescriptionScreen(
+                    patientId: patientId,
+                    patientName: patientName,
+                    doctorId: doctorId,
+                    doctorName: doctorName,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _StatCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-
-  const _StatCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
+// ── Tab 1: Medications ─────────────────────────────────────────────────────────
+class _MedicationsTab extends StatelessWidget {
+  final Stream<List<MedicationModel>> stream;
+  const _MedicationsTab({required this.stream});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2))
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Column(
+    return StreamBuilder<List<MedicationModel>>(
+      stream: stream,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+              child: CircularProgressIndicator(
+                  color: AppColors.primary));
+        }
+        final meds = snapshot.data ?? [];
+        if (meds.isEmpty) {
+          return const _EmptyTab(
+            icon: Icons.medication_outlined,
+            message: 'No active medications for this patient.',
+            color: AppColors.primary,
+          );
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: meds.length,
+          itemBuilder: (_, i) {
+            final med = meds[i];
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary
+                              .withOpacity(0.1),
+                          borderRadius:
+                              BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.medication,
+                            color: AppColors.primary, size: 18),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                          child: Text(med.name,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15))),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.border,
+                          borderRadius:
+                              BorderRadius.circular(6),
+                        ),
+                        child: const Text('VIEW ONLY',
+                            style: TextStyle(
+                                fontSize: 9,
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                    ]),
+                    const SizedBox(height: 10),
+                    _row('Dosage', med.dosage),
+                    _row('Frequency', med.frequency),
+                    _row('Times', med.times.join('  ·  ')),
+                    if (med.instructions.isNotEmpty)
+                      _row('Instructions', med.instructions),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _row(String label, String value) => Padding(
+        padding: const EdgeInsets.only(bottom: 5),
+        child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(value,
-                  style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: color)),
-              Text(label,
-                  style: const TextStyle(
-                      fontSize: 12, color: Colors.grey)),
-            ],
-          ),
-        ],
+              SizedBox(
+                  width: 90,
+                  child: Text('$label:',
+                      style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12))),
+              Expanded(
+                  child: Text(value,
+                      style: const TextStyle(fontSize: 13))),
+            ]),
+      );
+}
+
+// ── Tab 2: Consultations ───────────────────────────────────────────────────────
+class _ConsultationsTab extends StatelessWidget {
+  final Stream<List<ConsultationModel>> stream;
+  final VoidCallback onAdd;
+  const _ConsultationsTab(
+      {required this.stream, required this.onAdd});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: onAdd,
+        icon: const Icon(Icons.add),
+        label: const Text('Add Note'),
+        backgroundColor: const Color(0xFF0891B2),
+      ),
+      body: StreamBuilder<List<ConsultationModel>>(
+        stream: stream,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState ==
+              ConnectionState.waiting) {
+            return const Center(
+                child: CircularProgressIndicator(
+                    color: AppColors.primary));
+          }
+          final list = snapshot.data ?? [];
+          if (list.isEmpty) {
+            return const _EmptyTab(
+              icon: Icons.note_alt_outlined,
+              message:
+                  'No consultation notes yet.\nTap + to add.',
+              color: Color(0xFF0891B2),
+            );
+          }
+          return ListView.builder(
+            padding:
+                const EdgeInsets.fromLTRB(16, 16, 16, 100),
+            itemCount: list.length,
+            itemBuilder: (_, i) {
+              final c = list[i];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border:
+                      Border.all(color: AppColors.border),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
+                    children: [
+                      Row(children: [
+                        const Icon(
+                            Icons.calendar_today_outlined,
+                            size: 13,
+                            color: AppColors.textSecondary),
+                        const SizedBox(width: 6),
+                        Text(_fmt(c.createdAt),
+                            style: const TextStyle(
+                                color:
+                                    AppColors.textSecondary,
+                                fontSize: 12)),
+                        const Spacer(),
+                        Text('Dr. ${c.doctorName}',
+                            style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF0891B2),
+                                fontWeight:
+                                    FontWeight.w500)),
+                      ]),
+                      if (c.diagnosis.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.warning
+                                .withOpacity(0.08),
+                            borderRadius:
+                                BorderRadius.circular(8),
+                            border: Border.all(
+                                color: AppColors.warning
+                                    .withOpacity(0.3)),
+                          ),
+                          child: Row(children: [
+                            const Icon(
+                                Icons
+                                    .medical_information_outlined,
+                                size: 14,
+                                color: AppColors.warning),
+                            const SizedBox(width: 6),
+                            Expanded(
+                                child: Text(
+                                    'Diagnosis: ${c.diagnosis}',
+                                    style: const TextStyle(
+                                        fontSize: 13,
+                                        color:
+                                            AppColors.warning))),
+                          ]),
+                        ),
+                      ],
+                      const SizedBox(height: 10),
+                      Text(c.notes,
+                          style: const TextStyle(
+                              fontSize: 14, height: 1.5)),
+                      if (c.followUpDate.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Row(children: [
+                          const Icon(Icons.event_outlined,
+                              size: 14,
+                              color: AppColors.success),
+                          const SizedBox(width: 6),
+                          Text(
+                              'Follow-up: ${c.followUpDate}',
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.success,
+                                  fontWeight:
+                                      FontWeight.w500)),
+                        ]),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
+}
+
+// ── Tab 3: Prescriptions ───────────────────────────────────────────────────────
+class _PrescriptionsTab extends StatelessWidget {
+  final Stream<List<PrescriptionModel>> stream;
+  final VoidCallback onAdd;
+  const _PrescriptionsTab(
+      {required this.stream, required this.onAdd});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: onAdd,
+        icon: const Icon(Icons.add),
+        label: const Text('New Prescription'),
+        backgroundColor: AppColors.success,
+      ),
+      body: StreamBuilder<List<PrescriptionModel>>(
+        stream: stream,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState ==
+              ConnectionState.waiting) {
+            return const Center(
+                child: CircularProgressIndicator(
+                    color: AppColors.success));
+          }
+          final list = snapshot.data ?? [];
+          if (list.isEmpty) {
+            return const _EmptyTab(
+              icon: Icons.receipt_long_outlined,
+              message:
+                  'No prescriptions yet.\nTap + to create one.',
+              color: AppColors.success,
+            );
+          }
+          return ListView.builder(
+            padding:
+                const EdgeInsets.fromLTRB(16, 16, 16, 100),
+            itemCount: list.length,
+            itemBuilder: (_, i) {
+              final p = list[i];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border:
+                      Border.all(color: AppColors.border),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
+                    children: [
+                      Row(children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.success
+                                .withOpacity(0.1),
+                            borderRadius:
+                                BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                              Icons.receipt_long,
+                              color: AppColors.success,
+                              size: 18),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                  'Prescription — ${_fmt(p.createdAt)}',
+                                  style: const TextStyle(
+                                      fontWeight:
+                                          FontWeight.w600,
+                                      fontSize: 14)),
+                              Text('Dr. ${p.doctorName}',
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors
+                                          .textSecondary)),
+                            ],
+                          ),
+                        ),
+                      ]),
+                      const Divider(height: 16),
+                      ...p.medicines.map((med) => Padding(
+                            padding: const EdgeInsets.only(
+                                bottom: 8),
+                            child: Row(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    margin:
+                                        const EdgeInsets.only(
+                                            top: 5),
+                                    width: 6,
+                                    height: 6,
+                                    decoration:
+                                        const BoxDecoration(
+                                            color: AppColors
+                                                .success,
+                                            shape: BoxShape
+                                                .circle),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment
+                                              .start,
+                                      children: [
+                                        Text(
+                                            '${med.name}  •  ${med.dosage}',
+                                            style: const TextStyle(
+                                                fontWeight:
+                                                    FontWeight
+                                                        .w600,
+                                                fontSize: 13)),
+                                        Text(
+                                            '${med.frequency}  ·  ${med.duration}',
+                                            style: const TextStyle(
+                                                fontSize: 12,
+                                                color: AppColors
+                                                    .textSecondary)),
+                                        if (med.instructions
+                                            .isNotEmpty)
+                                          Text(
+                                              med.instructions,
+                                              style: const TextStyle(
+                                                  fontSize: 11,
+                                                  color: AppColors
+                                                      .warning)),
+                                      ],
+                                    ),
+                                  ),
+                                ]),
+                          )),
+                      if (p.validUntil.isNotEmpty) ...[
+                        const Divider(height: 12),
+                        Row(children: [
+                          const Icon(
+                              Icons.event_available_outlined,
+                              size: 13,
+                              color: AppColors.success),
+                          const SizedBox(width: 6),
+                          Text(
+                              'Valid until: ${p.validUntil}',
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.success,
+                                  fontWeight:
+                                      FontWeight.w500)),
+                        ]),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ── Shared helpers ──────────────────────────────────────────────────────────────
+String _fmt(DateTime dt) => '${dt.day}/${dt.month}/${dt.year}';
+
+class _EmptyTab extends StatelessWidget {
+  final IconData icon;
+  final String message;
+  final Color color;
+  const _EmptyTab(
+      {required this.icon,
+      required this.message,
+      required this.color});
+
+  @override
+  Widget build(BuildContext context) => Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  shape: BoxShape.circle),
+              child: Icon(icon, size: 48, color: color),
+            ),
+            const SizedBox(height: 16),
+            Text(message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 14)),
+          ],
+        ),
+      );
+}
+
+class _StatBox extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color color;
+  const _StatBox(
+      {required this.icon,
+      required this.value,
+      required this.label,
+      required this.color});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(value,
+                style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: color)),
+            Text(label,
+                style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary)),
+          ]),
+        ]),
+      );
 }
