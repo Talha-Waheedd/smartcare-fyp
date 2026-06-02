@@ -13,7 +13,6 @@ import 'medication_screen.dart';
 import 'ai_suggestions_screen.dart';
 import 'health_record_screen.dart';
 import 'patient_prescriptions_screen.dart';
-import 'consult_doctors_screen.dart';
 import 'view_consultations_screen.dart';
 import 'profile_screen.dart';
 import 'doctor_search_screen.dart';
@@ -142,10 +141,10 @@ class _PatientScreenState extends State<PatientScreen> {
                 child: _TodaysMedsCard(uid: _uid!, medService: _medService),
               ),
 
-              // ── Consultations ───────────────────────────────────────
+              // ── Appointments ────────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-                child: Text('Consultations',
+                child: Text('Appointments',
                     style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -153,45 +152,23 @@ class _PatientScreenState extends State<PatientScreen> {
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: SizedBox(
-                        height: 130,
-                        child: _ConsultationCard(
-                          icon: Icons.people_alt_rounded,
-                          label: 'Consult Doctors',
-                          subtitle: 'Book a consultation',
-                          gradient: const [AppColors.doctor, Color(0xFF0E7490)],
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const ConsultDoctorsScreen()),
-                          ),
-                        ),
-                      ),
+                child: SizedBox(
+                  height: 130,
+                  width: double.infinity,
+                  child: _ConsultationCard(
+                    icon: Icons.calendar_month_rounded,
+                    label: 'See Appointments',
+                    subtitle: 'View your booking history',
+                    gradient: const [
+                      AppColors.primary,
+                      AppColors.primaryDark
+                    ],
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const ViewConsultationsScreen()),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: SizedBox(
-                        height: 130,
-                        child: _ConsultationCard(
-                          icon: Icons.history_rounded,
-                          label: 'See Consultations',
-                          subtitle: 'View your history',
-                          gradient: const [
-                            AppColors.primary,
-                            AppColors.primaryDark
-                          ],
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const ViewConsultationsScreen()),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
 

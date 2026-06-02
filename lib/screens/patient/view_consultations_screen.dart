@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../models/consultation_model.dart';
-import '../../services/consultation_service.dart';
+import '../../models/appointment_model.dart';
+import '../../services/appointment_service.dart';
 import '../../theme/app_theme.dart';
 import '../auth/login_screen.dart';
-import 'consult_doctors_screen.dart';
+import 'doctor_search_screen.dart';
 import 'add_review_screen.dart';
 
 class ViewConsultationsScreen extends StatefulWidget {
@@ -17,7 +17,7 @@ class ViewConsultationsScreen extends StatefulWidget {
 }
 
 class _ViewConsultationsScreenState extends State<ViewConsultationsScreen> {
-  final _consultService = ConsultationService();
+  final _apptService = AppointmentService();
   String? _patientId;
 
   static const _accent = AppColors.doctor;
@@ -42,25 +42,19 @@ class _ViewConsultationsScreenState extends State<ViewConsultationsScreen> {
   String _formatDate(DateTime dt) =>
       '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
 
-  Color _statusColor(ConsultationStatus status) {
+  Color _statusColor(AppointmentStatus status) {
     switch (status) {
-      case ConsultationStatus.active:
+      case AppointmentStatus.pending:
+        return AppColors.warning;
+      case AppointmentStatus.accepted:
         return AppColors.success;
-      case ConsultationStatus.completed:
+      case AppointmentStatus.rescheduled:
         return AppColors.primary;
-      case ConsultationStatus.cancelled:
+      case AppointmentStatus.completed:
+        return AppColors.doctor;
+      case AppointmentStatus.rejected:
+      case AppointmentStatus.cancelled:
         return AppColors.error;
-    }
-  }
-
-  String _statusLabel(ConsultationStatus status) {
-    switch (status) {
-      case ConsultationStatus.active:
-        return 'Active';
-      case ConsultationStatus.completed:
-        return 'Completed';
-      case ConsultationStatus.cancelled:
-        return 'Cancelled';
     }
   }
 
@@ -77,11 +71,11 @@ class _ViewConsultationsScreenState extends State<ViewConsultationsScreen> {
       appBar: AppBar(
         backgroundColor: _accent,
         foregroundColor: Colors.white,
-        title: Text('My Consultations',
+        title: Text('My Appointments',
             style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
       ),
-      body: StreamBuilder<List<ConsultationModel>>(
-        stream: _consultService.getPatientConsultations(_patientId!),
+      body: StreamBuilder<List<AppointmentModel>>(
+        stream: _apptService.getPatientAppointments(_patientId!),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
@@ -94,9 +88,9 @@ class _ViewConsultationsScreenState extends State<ViewConsultationsScreen> {
             );
           }
 
-          final consultations = snapshot.data ?? [];
+          final appointments = snapshot.data ?? [];
 
-          if (consultations.isEmpty) {
+          if (appointments.isEmpty) {
             return RefreshIndicator(
               color: _accent,
               onRefresh: () async => setState(() {}),
@@ -113,12 +107,12 @@ class _ViewConsultationsScreenState extends State<ViewConsultationsScreen> {
                             color: _accent.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
-                          child: Icon(Icons.history_rounded,
+                          child: Icon(Icons.calendar_month_outlined,
                               size: 56,
                               color: _accent.withValues(alpha: 0.6)),
                         ),
                         const SizedBox(height: 20),
-                        Text('No consultations yet',
+                        Text('No appointments yet',
                             style: GoogleFonts.poppins(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
@@ -128,7 +122,7 @@ class _ViewConsultationsScreenState extends State<ViewConsultationsScreen> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 40),
                           child: Text(
-                            'Tap Consult Doctors to start your first consultation.',
+                            'Use Find Doctors on your dashboard to book your first appointment.',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.poppins(
                               fontSize: 14,
@@ -141,7 +135,7 @@ class _ViewConsultationsScreenState extends State<ViewConsultationsScreen> {
                           onPressed: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (_) => const ConsultDoctorsScreen()),
+                                builder: (_) => const DoctorSearchScreen()),
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _accent,
@@ -151,8 +145,8 @@ class _ViewConsultationsScreenState extends State<ViewConsultationsScreen> {
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14)),
                           ),
-                          icon: const Icon(Icons.people_alt_outlined),
-                          label: Text('Consult Doctors',
+                          icon: const Icon(Icons.search_rounded),
+                          label: Text('Find Doctors',
                               style: GoogleFonts.poppins(
                                   fontWeight: FontWeight.w600)),
                         ),
@@ -170,10 +164,10 @@ class _ViewConsultationsScreenState extends State<ViewConsultationsScreen> {
             child: ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-              itemCount: consultations.length,
+              itemCount: appointments.length,
               itemBuilder: (_, i) {
-                final c = consultations[i];
-                final statusColor = _statusColor(c.status);
+                final a = appointments[i];
+                final statusColor = _statusColor(a.status);
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 14),
@@ -197,14 +191,14 @@ class _ViewConsultationsScreenState extends State<ViewConsultationsScreen> {
                         Row(
                           children: [
                             Hero(
-                              tag: 'consultation_${c.id}',
+                              tag: 'appointment_${a.id}',
                               child: CircleAvatar(
                                 radius: 24,
                                 backgroundColor:
                                     _accent.withValues(alpha: 0.12),
                                 child: Text(
-                                  c.doctorName.isNotEmpty
-                                      ? c.doctorName[0].toUpperCase()
+                                  a.doctorName.isNotEmpty
+                                      ? a.doctorName[0].toUpperCase()
                                       : 'D',
                                   style: GoogleFonts.poppins(
                                     fontWeight: FontWeight.bold,
@@ -218,7 +212,7 @@ class _ViewConsultationsScreenState extends State<ViewConsultationsScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Dr. ${c.doctorName}',
+                                  Text('Dr. ${a.doctorName}',
                                       style: GoogleFonts.poppins(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w700,
@@ -232,7 +226,7 @@ class _ViewConsultationsScreenState extends State<ViewConsultationsScreen> {
                                           color: AppColors.textSecondary),
                                       const SizedBox(width: 4),
                                       Text(
-                                          _formatDate(c.consultationDate),
+                                          '${_formatDate(a.slotDate)} · ${a.slotLabel}',
                                           style: GoogleFonts.poppins(
                                             fontSize: 12,
                                             color: AppColors.textSecondary,
@@ -251,7 +245,7 @@ class _ViewConsultationsScreenState extends State<ViewConsultationsScreen> {
                                 border: Border.all(
                                     color: statusColor.withValues(alpha: 0.35)),
                               ),
-                              child: Text(_statusLabel(c.status),
+                              child: Text(a.status.label,
                                   style: GoogleFonts.poppins(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
@@ -260,32 +254,23 @@ class _ViewConsultationsScreenState extends State<ViewConsultationsScreen> {
                             ),
                           ],
                         ),
-                        if (c.diagnosis.isNotEmpty) ...[
+                        if (a.reason.isNotEmpty) ...[
                           const SizedBox(height: 12),
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: AppColors.warning.withValues(alpha: 0.08),
+                              color: AppColors.primaryLight,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: Text('Diagnosis: ${c.diagnosis}',
+                            child: Text('Reason: ${a.reason}',
                                 style: GoogleFonts.poppins(
                                   fontSize: 13,
-                                  color: AppColors.warning,
+                                  color: AppColors.textSecondary,
                                 )),
                           ),
                         ],
-                        if (c.notes.isNotEmpty) ...[
-                          const SizedBox(height: 10),
-                          Text(c.notes,
-                              style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                color: AppColors.textSecondary,
-                                height: 1.4,
-                              )),
-                        ],
-                        if (c.status == ConsultationStatus.completed) ...[
+                        if (a.status == AppointmentStatus.completed) ...[
                           const SizedBox(height: 12),
                           SizedBox(
                             width: double.infinity,
@@ -294,11 +279,15 @@ class _ViewConsultationsScreenState extends State<ViewConsultationsScreen> {
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) => AddReviewScreen(
-                                    doctorId: c.doctorId,
-                                    doctorName: c.doctorName,
+                                    doctorId: a.doctorId,
+                                    doctorName: a.doctorName,
                                     patientId: _patientId!,
-                                    patientName: c.patientName,
-                                    consultationId: c.id,
+                                    patientName: a.patientName.isNotEmpty
+                                        ? a.patientName
+                                        : 'Patient',
+                                    consultationId: a.consultationId.isNotEmpty
+                                        ? a.consultationId
+                                        : a.id,
                                   ),
                                 ),
                               ),

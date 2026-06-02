@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // FILE: lib/services/doctor_service.dart
 // PURPOSE: All Firestore operations needed by the Doctor role:
-//   - Fetch patient list (scoped to doctor's consultations)
+//   - Fetch patient list (scoped to doctor's appointments)
 //   - Fetch patient medications (read-only)
 //   - Add/get consultation notes
 //   - Create/get prescriptions (doctors only)
@@ -19,18 +19,28 @@ class DoctorService {
   final _db = FirebaseFirestore.instance;
   final _consultService = ConsultationService();
 
-  // ── GET DOCTOR'S PATIENTS (via consultations collection) ─────────────────
+  static const _patientAppointmentStatuses = {
+    'accepted',
+    'rescheduled',
+    'completed',
+  };
+
+  // ── GET DOCTOR'S PATIENTS (via appointments collection) ───────────────────
   Stream<List<Map<String, dynamic>>> getMyPatients(String doctorId) {
     if (doctorId.isEmpty) {
       return Stream.value([]);
     }
 
     return _db
-        .collection('consultations')
+        .collection('appointments')
         .where('doctorId', isEqualTo: doctorId)
         .snapshots()
-        .asyncMap((consultSnap) async {
-      final patientIds = consultSnap.docs
+        .asyncMap((apptSnap) async {
+      final patientIds = apptSnap.docs
+          .where((d) {
+            final status = d.data()['status'] as String? ?? '';
+            return _patientAppointmentStatuses.contains(status);
+          })
           .map((d) => d.data()['patientId'] as String?)
           .whereType<String>()
           .toSet()
@@ -48,7 +58,8 @@ class DoctorService {
             .get();
         for (final doc in snap.docs) {
           final data = doc.data();
-          if (data['isActive'] == true && data['role'] == 'patient') {
+          final isActive = data['isActive'] ?? true;
+          if (isActive == true && data['role'] == 'patient') {
             patients.add({'id': doc.id, ...data});
           }
         }

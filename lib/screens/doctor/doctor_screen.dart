@@ -355,7 +355,7 @@ class _DoctorScreenState extends State<DoctorScreen> {
                         Text(
                           _searchQuery.isNotEmpty
                               ? 'No patients match "$_searchQuery"'
-                              : 'No patients have consulted with you yet',
+                              : 'No patients with accepted appointments yet',
                           style: const TextStyle(
                               color: AppColors.textSecondary),
                         ),
