@@ -48,6 +48,7 @@ class PrescriptionModel {
   final List<PrescribedMedicine> medicines;
   final String notes;           // General prescription notes
   final String validUntil;      // Date string "YYYY-MM-DD"
+  final String consultationId;  // Optional link to a specific consultation
   final DateTime createdAt;
 
   const PrescriptionModel({
@@ -59,6 +60,7 @@ class PrescriptionModel {
     required this.medicines,
     required this.notes,
     required this.validUntil,
+    this.consultationId = '',
     required this.createdAt,
   });
 
@@ -76,6 +78,7 @@ class PrescriptionModel {
       medicines: medicinesList,
       notes: map['notes'] ?? '',
       validUntil: map['validUntil'] ?? '',
+      consultationId: map['consultationId'] ?? '',
       createdAt: (map['createdAt'])?.toDate() ?? DateTime.now(),
     );
   }
@@ -88,6 +91,7 @@ class PrescriptionModel {
         'medicines': medicines.map((m) => m.toMap()).toList(),
         'notes': notes,
         'validUntil': validUntil,
+        'consultationId': consultationId,
         'createdAt': createdAt,
       };
 }

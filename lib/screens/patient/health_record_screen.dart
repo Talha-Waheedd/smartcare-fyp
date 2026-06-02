@@ -4,13 +4,16 @@
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:async';
 import 'dart:io';
 import '../../models/health_record_model.dart';
 import '../../theme/app_theme.dart';
+import '../auth/login_screen.dart';
 
 class HealthRecordScreen extends StatefulWidget {
   const HealthRecordScreen({super.key});
@@ -20,12 +23,46 @@ class HealthRecordScreen extends StatefulWidget {
 }
 
 class _HealthRecordScreenState extends State<HealthRecordScreen> {
-  final String _uid = FirebaseAuth.instance.currentUser!.uid;
+  String? _uid;
   bool _isUploading = false;
   double _uploadProgress = 0;
+  StreamSubscription<TaskSnapshot>? _uploadSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _uid = FirebaseAuth.instance.currentUser?.uid;
+    if (_uid == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _redirectToLogin();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _uploadSub?.cancel();
+    super.dispose();
+  }
+
+  void _redirectToLogin() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (_) => false,
+    );
+  }
+
+  String _uploadErrorMessage(Object e) {
+    if (e is FirebaseException) {
+      return 'Upload failed (${e.code}): ${e.message ?? e.toString()}';
+    }
+    return 'Upload failed: $e';
+  }
 
   // ── Fetch records stream ───────────────────────────────────────────────────
   Stream<List<HealthRecordModel>> get _recordsStream {
+    if (_uid == null) return Stream.value([]);
     return FirebaseFirestore.instance
         .collection('users')
         .doc(_uid)
@@ -111,6 +148,7 @@ class _HealthRecordScreenState extends State<HealthRecordScreen> {
     );
 
     if (confirmed != true) return;
+    if (_uid == null) return;
 
     // Pick file
     final result = await FilePicker.platform.pickFiles(
@@ -126,21 +164,31 @@ class _HealthRecordScreenState extends State<HealthRecordScreen> {
 
     try {
       final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
-      final storageRef = FirebaseStorage.instance
-          .ref()
-          .child('healthRecords/$_uid/$fileName');
+      final storagePath = 'healthRecords/$_uid/$fileName';
+      final storageRef = FirebaseStorage.instance.ref(storagePath);
 
       final uploadTask = storageRef.putFile(File(file.path!));
 
       // Track progress
-      uploadTask.snapshotEvents.listen((snap) {
-        setState(() {
-          _uploadProgress =
-              snap.bytesTransferred / snap.totalBytes;
-        });
+      _uploadSub?.cancel();
+      _uploadSub = uploadTask.snapshotEvents.listen((snap) {
+        if (!mounted) return;
+        if (snap.totalBytes > 0) {
+          setState(() {
+            _uploadProgress = snap.bytesTransferred / snap.totalBytes;
+          });
+        }
       });
 
       final snapshot = await uploadTask;
+      if (snapshot.state != TaskState.success) {
+        throw FirebaseException(
+          plugin: 'firebase_storage',
+          code: 'upload-incomplete',
+          message: 'Upload did not complete successfully',
+        );
+      }
+
       final downloadUrl = await snapshot.ref.getDownloadURL();
 
       // Save metadata to Firestore
@@ -153,6 +201,7 @@ class _HealthRecordScreenState extends State<HealthRecordScreen> {
         'title': titleCtrl.text.trim(),
         'type': selectedType,
         'fileUrl': downloadUrl,
+        'storagePath': storagePath,
         'fileName': file.name,
         'notes': notesCtrl.text.trim(),
         'uploadedAt': FieldValue.serverTimestamp(),
@@ -166,12 +215,14 @@ class _HealthRecordScreenState extends State<HealthRecordScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Upload failed: $e'),
+            SnackBar(content: Text(_uploadErrorMessage(e)),
                 backgroundColor: AppColors.error));
       }
+    } finally {
+      _uploadSub?.cancel();
+      _uploadSub = null;
+      if (mounted) setState(() => _isUploading = false);
     }
-
-    setState(() => _isUploading = false);
   }
 
   // ── Delete record ──────────────────────────────────────────────────────────
@@ -198,11 +249,24 @@ class _HealthRecordScreenState extends State<HealthRecordScreen> {
     );
 
     if (confirmed != true) return;
+    if (_uid == null) return;
 
     try {
-      // Delete from Storage
-      if (record.fileUrl.isNotEmpty) {
-        await FirebaseStorage.instance.refFromURL(record.fileUrl).delete();
+      // Delete from Storage (ignore missing objects)
+      if (record.storagePath.isNotEmpty) {
+        try {
+          await FirebaseStorage.instance.ref(record.storagePath).delete();
+        } on FirebaseException catch (e) {
+          if (e.code != 'object-not-found') rethrow;
+        }
+      } else if (record.fileUrl.isNotEmpty) {
+        try {
+          await FirebaseStorage.instance
+              .refFromURL(record.fileUrl)
+              .delete();
+        } on FirebaseException catch (e) {
+          if (e.code != 'object-not-found') rethrow;
+        }
       }
       // Delete from Firestore
       await FirebaseFirestore.instance
@@ -293,6 +357,12 @@ class _HealthRecordScreenState extends State<HealthRecordScreen> {
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
+                }
+
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text('Error loading records: ${snapshot.error}'),
+                  );
                 }
 
                 final records = snapshot.data ?? [];

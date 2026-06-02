@@ -13,6 +13,10 @@ import 'medication_screen.dart';
 import 'ai_suggestions_screen.dart';
 import 'health_record_screen.dart';
 import 'patient_prescriptions_screen.dart';
+import 'consult_doctors_screen.dart';
+import 'view_consultations_screen.dart';
+import 'profile_screen.dart';
+import 'doctor_search_screen.dart';
 
 class PatientScreen extends StatefulWidget {
   const PatientScreen({super.key});
@@ -22,7 +26,7 @@ class PatientScreen extends StatefulWidget {
 }
 
 class _PatientScreenState extends State<PatientScreen> {
-  final String _uid = FirebaseAuth.instance.currentUser!.uid;
+  String? _uid;
   final MedicationService _medService = MedicationService();
   final NotificationService _notifService = NotificationService();
   String _name = '';
@@ -31,11 +35,25 @@ class _PatientScreenState extends State<PatientScreen> {
   @override
   void initState() {
     super.initState();
+    _uid = FirebaseAuth.instance.currentUser?.uid;
+    if (_uid == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (_) => false,
+          );
+        }
+      });
+      return;
+    }
     _loadName();
     _initNotifications();
   }
 
   Future<void> _loadName() async {
+    if (_uid == null) return;
     try {
       final doc = await FirebaseFirestore.instance
           .collection('users').doc(_uid).get();
@@ -48,10 +66,10 @@ class _PatientScreenState extends State<PatientScreen> {
   }
 
   Future<void> _initNotifications() async {
-    if (_notifInit) return;
+    if (_notifInit || _uid == null) return;
     try {
       await _notifService.initialize();
-      await _notifService.saveFCMToken(_uid);
+      await _notifService.saveFCMToken(_uid!);
       _notifInit = true;
     } catch (_) {}
   }
@@ -73,12 +91,24 @@ class _PatientScreenState extends State<PatientScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_uid == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('SmartCare'),
         automaticallyImplyLeading: false,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.person_outline),
+            tooltip: 'My Profile',
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const ProfileScreen())),
+          ),
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
@@ -109,7 +139,60 @@ class _PatientScreenState extends State<PatientScreen> {
               // ── Today's Medications Card ──────────────────────────────
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: _TodaysMedsCard(uid: _uid, medService: _medService),
+                child: _TodaysMedsCard(uid: _uid!, medService: _medService),
+              ),
+
+              // ── Consultations ───────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                child: Text('Consultations',
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary)),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 130,
+                        child: _ConsultationCard(
+                          icon: Icons.people_alt_rounded,
+                          label: 'Consult Doctors',
+                          subtitle: 'Book a consultation',
+                          gradient: const [AppColors.doctor, Color(0xFF0E7490)],
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const ConsultDoctorsScreen()),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SizedBox(
+                        height: 130,
+                        child: _ConsultationCard(
+                          icon: Icons.history_rounded,
+                          label: 'See Consultations',
+                          subtitle: 'View your history',
+                          gradient: const [
+                            AppColors.primary,
+                            AppColors.primaryDark
+                          ],
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const ViewConsultationsScreen()),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
               // ── Quick Actions ─────────────────────────────────────────
@@ -130,7 +213,7 @@ class _PatientScreenState extends State<PatientScreen> {
                   physics: const NeverScrollableScrollPhysics(),
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
-                  childAspectRatio: 1.25,
+                  childAspectRatio: 1.15,
                   children: [
                     _ActionTile(
                       icon: Icons.medication_rounded,
@@ -168,6 +251,24 @@ class _PatientScreenState extends State<PatientScreen> {
                           MaterialPageRoute(
                               builder: (_) =>
                                   const PatientPrescriptionsScreen())),
+                    ),
+                    _ActionTile(
+                      icon: Icons.search_rounded,
+                      label: 'Find Doctors',
+                      subtitle: 'Search by specialty',
+                      color: AppColors.doctor,
+                      onTap: () => Navigator.push(context,
+                          MaterialPageRoute(
+                              builder: (_) => const DoctorSearchScreen())),
+                    ),
+                    _ActionTile(
+                      icon: Icons.person_rounded,
+                      label: 'My Profile',
+                      subtitle: 'Personal & medical info',
+                      color: AppColors.patient,
+                      onTap: () => Navigator.push(context,
+                          MaterialPageRoute(
+                              builder: (_) => const ProfileScreen())),
                     ),
                   ],
                 ),
@@ -312,6 +413,78 @@ class _TodaysMedsCard extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+// ── Consultation gradient card ───────────────────────────────────────────────
+class _ConsultationCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final List<Color> gradient;
+  final VoidCallback onTap;
+
+  const _ConsultationCard({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.gradient,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Ink(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: gradient,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: gradient.first.withValues(alpha: 0.35),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: Colors.white, size: 24),
+              ),
+              const Spacer(),
+              Text(label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  )),
+              const SizedBox(height: 2),
+              Text(subtitle,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    fontSize: 11,
+                  )),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

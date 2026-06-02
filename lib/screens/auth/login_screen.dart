@@ -83,8 +83,9 @@ class _LoginScreenState extends State<LoginScreen> {
       });
     } catch (e) {
       setState(() => _errorMsg = e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-    if (mounted) setState(() => _isLoading = false);
   }
 
   void _showForgotPassword() {

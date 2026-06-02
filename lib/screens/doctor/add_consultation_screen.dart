@@ -62,26 +62,25 @@ class _AddConsultationScreenState extends State<AddConsultationScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
 
+    final now = DateTime.now();
     final consultation = ConsultationModel(
       id: '',
       patientId: widget.patientId,
       patientName: widget.patientName,
       doctorId: widget.doctorId,
       doctorName: widget.doctorName,
+      consultationDate: now,
+      status: ConsultationStatus.completed,
       notes: _notesController.text.trim(),
       diagnosis: _diagnosisController.text.trim(),
       followUpDate: _followUpController.text.trim(),
-      createdAt: DateTime.now(),
+      createdAt: now,
     );
 
-    final success =
-        await DoctorService().addConsultation(consultation);
+    try {
+      await DoctorService().addConsultation(consultation);
 
-    setState(() => _isLoading = false);
-
-    if (!mounted) return;
-
-    if (success) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Consultation note saved successfully'),
@@ -89,13 +88,16 @@ class _AddConsultationScreenState extends State<AddConsultationScreen> {
         ),
       );
       Navigator.pop(context);
-    } else {
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to save. Please try again.'),
+        SnackBar(
+          content: Text('Failed to save: $e'),
           backgroundColor: Colors.red,
         ),
       );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

@@ -7,6 +7,7 @@ class HealthRecordModel {
   final String title;
   final String type;       // 'pdf', 'image', 'lab_result', 'report'
   final String fileUrl;    // Firebase Storage download URL
+  final String storagePath; // Firebase Storage path for delete
   final String fileName;
   final String notes;
   final DateTime uploadedAt;
@@ -17,6 +18,7 @@ class HealthRecordModel {
     required this.title,
     required this.type,
     required this.fileUrl,
+    this.storagePath = '',
     required this.fileName,
     required this.notes,
     required this.uploadedAt,
@@ -29,6 +31,7 @@ class HealthRecordModel {
       title: map['title'] ?? '',
       type: map['type'] ?? 'report',
       fileUrl: map['fileUrl'] ?? '',
+      storagePath: map['storagePath'] ?? '',
       fileName: map['fileName'] ?? '',
       notes: map['notes'] ?? '',
       uploadedAt: (map['uploadedAt'])?.toDate() ?? DateTime.now(),
@@ -40,6 +43,7 @@ class HealthRecordModel {
     'title': title,
     'type': type,
     'fileUrl': fileUrl,
+    'storagePath': storagePath,
     'fileName': fileName,
     'notes': notes,
     'uploadedAt': uploadedAt,

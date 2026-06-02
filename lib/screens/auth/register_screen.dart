@@ -62,15 +62,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final cred = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(email: email, password: pass);
 
-      await FirebaseFirestore.instance
-          .collection('users').doc(cred.user!.uid).set({
-        'uid': cred.user!.uid,
-        'name': name,
-        'email': email,
-        'role': 'patient',
-        'createdAt': FieldValue.serverTimestamp(),
-        'isActive': true,
-      });
+      try {
+        await FirebaseFirestore.instance
+            .collection('users').doc(cred.user!.uid).set({
+          'uid': cred.user!.uid,
+          'name': name,
+          'email': email,
+          'role': 'patient',
+          'createdAt': FieldValue.serverTimestamp(),
+          'isActive': true,
+        });
+      } catch (e) {
+        await cred.user!.delete();
+        rethrow;
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -86,8 +91,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       });
     } catch (e) {
       setState(() => _errorMsg = e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-    if (mounted) setState(() => _isLoading = false);
   }
 
   @override

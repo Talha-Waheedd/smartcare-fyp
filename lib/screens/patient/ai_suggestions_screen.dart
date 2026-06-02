@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/ai_suggestion_model.dart';
 import '../../services/ai_service.dart';
+import '../auth/login_screen.dart';
 
 class AiSuggestionScreen extends StatefulWidget {
   const AiSuggestionScreen({super.key});
@@ -30,8 +31,18 @@ class _AiSuggestionScreenState extends State<AiSuggestionScreen> {
   Future<void> _loadSuggestions() async {
     setState(() => _isLoading = true);
     try {
-      final uid = FirebaseAuth.instance.currentUser!.uid;
-      final result = await _aiService.generateSuggestions(uid);
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (_) => false,
+          );
+        }
+        return;
+      }
+      final result = await _aiService.generateSuggestions(user.uid);
       setState(() {
         _suggestions = result;
         _isLoading = false;

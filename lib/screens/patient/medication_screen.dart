@@ -9,6 +9,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/medication_model.dart';
 import '../../services/medication_service.dart';
 import '../../services/notification_service.dart';
+import '../auth/login_screen.dart';
 import 'add_medication_screen.dart';
 
 class MedicationScreen extends StatelessWidget {
@@ -16,7 +17,22 @@ class MedicationScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (_) => false,
+          );
+        }
+      });
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    final uid = user.uid;
     final medicationService = MedicationService();
 
     return Scaffold(

@@ -5,6 +5,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../models/user_model.dart';
 import '../../services/doctor_service.dart';
 import '../../models/medication_model.dart';
 import '../../models/consultation_model.dart';
@@ -13,6 +15,10 @@ import '../../theme/app_theme.dart';
 import '../auth/login_screen.dart';
 import 'add_consultation_screen.dart';
 import 'add_prescription_screen.dart';
+import 'doctor_profile_screen.dart';
+import 'schedule_screen.dart';
+import 'appointments_screen.dart';
+import '../../models/health_record_model.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DOCTOR DASHBOARD
@@ -100,6 +106,12 @@ class _DoctorScreenState extends State<DoctorScreen> {
         title: const Text('SmartCare'),
         automaticallyImplyLeading: false,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.person_outline),
+            tooltip: 'My Profile',
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const DoctorProfileScreen())),
+          ),
           IconButton(icon: const Icon(Icons.logout), onPressed: _logout),
         ],
       ),
@@ -168,13 +180,23 @@ class _DoctorScreenState extends State<DoctorScreen> {
               children: [
                 Expanded(
                   child: StreamBuilder<List<Map<String, dynamic>>>(
-                    stream: _doctorService.getPatients(),
-                    builder: (_, snap) => _StatBox(
+                    stream: _doctorService.getMyPatients(_doctorId),
+                    builder: (_, snap) {
+                      if (snap.hasError) {
+                        return _StatBox(
+                          icon: Icons.people_alt_outlined,
+                          value: '—',
+                          label: 'Patients',
+                          color: _c1,
+                        );
+                      }
+                      return _StatBox(
                       icon: Icons.people_alt_outlined,
                       value: '${snap.data?.length ?? 0}',
                       label: 'Patients',
                       color: _c1,
-                    ),
+                    );
+                    },
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -189,6 +211,38 @@ class _DoctorScreenState extends State<DoctorScreen> {
                       label: 'Consultations',
                       color: AppColors.success,
                     ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Quick actions
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _DashboardAction(
+                    icon: Icons.calendar_month_outlined,
+                    label: 'Appointments',
+                    color: _c1,
+                    onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const AppointmentsScreen())),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _DashboardAction(
+                    icon: Icons.schedule_outlined,
+                    label: 'My Schedule',
+                    color: AppColors.warning,
+                    onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const ScheduleScreen())),
                   ),
                 ),
               ],
@@ -231,8 +285,12 @@ class _DoctorScreenState extends State<DoctorScreen> {
                         color: AppColors.textPrimary)),
                 const Spacer(),
                 StreamBuilder<List<Map<String, dynamic>>>(
-                  stream: _doctorService.getPatients(),
-                  builder: (_, snap) => Container(
+                  stream: _doctorService.getMyPatients(_doctorId),
+                  builder: (_, snap) {
+                    if (snap.hasError) {
+                      return const SizedBox.shrink();
+                    }
+                    return Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
@@ -246,7 +304,8 @@ class _DoctorScreenState extends State<DoctorScreen> {
                           fontSize: 12,
                           fontWeight: FontWeight.w600),
                     ),
-                  ),
+                  );
+                  },
                 ),
               ],
             ),
@@ -255,12 +314,21 @@ class _DoctorScreenState extends State<DoctorScreen> {
           // Patient list
           Expanded(
             child: StreamBuilder<List<Map<String, dynamic>>>(
-              stream: _doctorService.getPatients(),
+              stream: _doctorService.getMyPatients(_doctorId),
               builder: (context, snapshot) {
                 if (snapshot.connectionState ==
                     ConnectionState.waiting) {
                   return const Center(
                       child: CircularProgressIndicator(color: _c1));
+                }
+
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Error loading patients: ${snapshot.error}',
+                      style: const TextStyle(color: AppColors.error),
+                    ),
+                  );
                 }
 
                 var patients = snapshot.data ?? [];
@@ -287,7 +355,7 @@ class _DoctorScreenState extends State<DoctorScreen> {
                         Text(
                           _searchQuery.isNotEmpty
                               ? 'No patients match "$_searchQuery"'
-                              : 'No patients registered yet',
+                              : 'No patients have consulted with you yet',
                           style: const TextStyle(
                               color: AppColors.textSecondary),
                         ),
@@ -398,7 +466,7 @@ class PatientDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final service = DoctorService();
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
@@ -416,6 +484,7 @@ class PatientDetailScreen extends StatelessWidget {
             ],
           ),
           bottom: const TabBar(
+            isScrollable: true,
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white60,
             indicatorColor: Colors.white,
@@ -431,50 +500,211 @@ class PatientDetailScreen extends StatelessWidget {
                   icon:
                       Icon(Icons.receipt_long_outlined, size: 18),
                   text: 'Prescriptions'),
+              Tab(
+                  icon: Icon(Icons.folder_open_outlined, size: 18),
+                  text: 'Reports'),
             ],
           ),
         ),
-        body: TabBarView(
+        body: Column(
           children: [
-            // Tab 1: Medications
-            _MedicationsTab(
-                stream:
-                    service.getPatientMedications(patientId)),
-            // Tab 2: Consultations
-            _ConsultationsTab(
-              stream:
-                  service.getPatientConsultations(patientId),
-              onAdd: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => AddConsultationScreen(
-                    patientId: patientId,
-                    patientName: patientName,
-                    doctorId: doctorId,
-                    doctorName: doctorName,
+            _PatientSummary(
+                future: service.getPatientProfile(patientId)),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  // Tab 1: Medications
+                  _MedicationsTab(
+                      stream:
+                          service.getPatientMedications(patientId)),
+                  // Tab 2: Consultations
+                  _ConsultationsTab(
+                    stream:
+                        service.getPatientConsultations(patientId),
+                    onAdd: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AddConsultationScreen(
+                          patientId: patientId,
+                          patientName: patientName,
+                          doctorId: doctorId,
+                          doctorName: doctorName,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            ),
-            // Tab 3: Prescriptions
-            _PrescriptionsTab(
-              stream:
-                  service.getPatientPrescriptions(patientId),
-              onAdd: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => AddPrescriptionScreen(
-                    patientId: patientId,
-                    patientName: patientName,
-                    doctorId: doctorId,
-                    doctorName: doctorName,
+                  // Tab 3: Prescriptions
+                  _PrescriptionsTab(
+                    stream:
+                        service.getPatientPrescriptions(patientId),
+                    onAdd: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AddPrescriptionScreen(
+                          patientId: patientId,
+                          patientName: patientName,
+                          doctorId: doctorId,
+                          doctorName: doctorName,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                  // Tab 4: Reports (patient-uploaded files, read-only)
+                  _ReportsTab(
+                      stream:
+                          service.getPatientHealthRecords(patientId)),
+                ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Patient medical summary header ──────────────────────────────────────────────
+class _PatientSummary extends StatelessWidget {
+  final Future<UserModel?> future;
+  const _PatientSummary({required this.future});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<UserModel?>(
+      future: future,
+      builder: (context, snap) {
+        final user = snap.data;
+        if (user == null) return const SizedBox.shrink();
+        final chips = <Widget>[];
+        if (user.bloodGroup.isNotEmpty) {
+          chips.add(_chip(Icons.bloodtype_outlined, 'Blood: ${user.bloodGroup}',
+              AppColors.error));
+        }
+        if (user.allergies.isNotEmpty) {
+          chips.add(_chip(Icons.warning_amber_outlined,
+              'Allergies: ${user.allergies}', AppColors.warning));
+        }
+        if (user.emergencyContact.isNotEmpty) {
+          chips.add(_chip(Icons.emergency_outlined,
+              'Emergency: ${user.emergencyContact}', AppColors.doctor));
+        }
+        if (user.phone.isNotEmpty) {
+          chips.add(_chip(Icons.phone_outlined, user.phone, AppColors.success));
+        }
+        if (chips.isEmpty) return const SizedBox.shrink();
+        return Container(
+          width: double.infinity,
+          margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Medical Summary',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary)),
+              const SizedBox(height: 8),
+              Wrap(spacing: 8, runSpacing: 8, children: chips),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _chip(IconData icon, String label, Color color) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 6),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 12, color: color, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      );
+}
+
+// ── Tab 4: Reports (patient-uploaded files) ─────────────────────────────────────
+class _ReportsTab extends StatelessWidget {
+  final Stream<List<HealthRecordModel>> stream;
+  const _ReportsTab({required this.stream});
+
+  Future<void> _open(BuildContext context, String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri != null && await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open file.')));
+    }
+  }
+
+  String _fmt(DateTime dt) => '${dt.day}/${dt.month}/${dt.year}';
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<HealthRecordModel>>(
+      stream: stream,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+              child: CircularProgressIndicator(color: AppColors.doctor));
+        }
+        final records = snapshot.data ?? [];
+        if (records.isEmpty) {
+          return const _EmptyTab(
+            icon: Icons.folder_open_outlined,
+            message: 'This patient has not uploaded any reports.',
+            color: AppColors.doctor,
+          );
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: records.length,
+          itemBuilder: (_, i) {
+            final r = records[i];
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: ListTile(
+                onTap: () => _open(context, r.fileUrl),
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: r.iconColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(r.icon, color: r.iconColor),
+                ),
+                title: Text(r.title,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text('${r.fileName}  ·  ${_fmt(r.uploadedAt)}',
+                    style: const TextStyle(fontSize: 12),
+                    overflow: TextOverflow.ellipsis),
+                trailing: const Icon(Icons.open_in_new,
+                    size: 18, color: AppColors.primary),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -926,6 +1156,52 @@ class _EmptyTab extends StatelessWidget {
                     color: AppColors.textSecondary,
                     fontSize: 14)),
           ],
+        ),
+      );
+}
+
+class _DashboardAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  const _DashboardAction(
+      {required this.icon,
+      required this.label,
+      required this.color,
+      required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(label,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: AppColors.textPrimary)),
+              ),
+            ],
+          ),
         ),
       );
 }

@@ -15,6 +15,7 @@ class AddPrescriptionScreen extends StatefulWidget {
   final String patientName;
   final String doctorId;
   final String doctorName;
+  final String consultationId;
 
   const AddPrescriptionScreen({
     super.key,
@@ -22,6 +23,7 @@ class AddPrescriptionScreen extends StatefulWidget {
     required this.patientName,
     required this.doctorId,
     required this.doctorName,
+    this.consultationId = '',
   });
 
   @override
@@ -117,17 +119,14 @@ class _AddPrescriptionScreenState extends State<AddPrescriptionScreen> {
       medicines: medicines,
       notes: _notesController.text.trim(),
       validUntil: _validUntilController.text.trim(),
+      consultationId: widget.consultationId,
       createdAt: DateTime.now(),
     );
 
-    final success =
-        await DoctorService().createPrescription(prescription);
+    try {
+      await DoctorService().createPrescription(prescription);
 
-    setState(() => _isLoading = false);
-
-    if (!mounted) return;
-
-    if (success) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Prescription created successfully'),
@@ -135,13 +134,16 @@ class _AddPrescriptionScreenState extends State<AddPrescriptionScreen> {
         ),
       );
       Navigator.pop(context);
-    } else {
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to save prescription. Try again.'),
+        SnackBar(
+          content: Text('Failed to save prescription: $e'),
           backgroundColor: Colors.red,
         ),
       );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

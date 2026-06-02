@@ -6,6 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../theme/app_theme.dart';
 import '../auth/login_screen.dart';
+import 'feedback_management_screen.dart';
 
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key});
@@ -151,18 +152,23 @@ class _AdminScreenState extends State<AdminScreen> {
                               .createUserWithEmailAndPassword(
                                   email: email,
                                   password: pass);
-                          await FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(cred.user!.uid)
-                              .set({
-                            'uid': cred.user!.uid,
-                            'name': name,
-                            'email': email,
-                            'role': 'doctor',
-                            'createdAt':
-                                FieldValue.serverTimestamp(),
-                            'isActive': true,
-                          });
+                          try {
+                            await FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(cred.user!.uid)
+                                .set({
+                              'uid': cred.user!.uid,
+                              'name': name,
+                              'email': email,
+                              'role': 'doctor',
+                              'createdAt':
+                                  FieldValue.serverTimestamp(),
+                              'isActive': true,
+                            });
+                          } catch (e) {
+                            await cred.user!.delete();
+                            rethrow;
+                          }
                           await auth.signOut();
                           if (ctx.mounted) {
                             Navigator.pop(ctx);
@@ -221,6 +227,13 @@ class _AdminScreenState extends State<AdminScreen> {
         title: const Text('SmartCare Admin'),
         automaticallyImplyLeading: false,
         actions: [
+          IconButton(
+              icon: const Icon(Icons.reviews_outlined),
+              tooltip: 'Feedback Management',
+              onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const FeedbackManagementScreen()))),
           IconButton(
               icon: const Icon(Icons.logout),
               onPressed: _logout),

@@ -61,7 +61,13 @@ class AuthWrapper extends StatelessWidget {
             if (!userSnapshot.hasData || !userSnapshot.data!.exists) {
               return const LoginScreen();
             }
-            final data = userSnapshot.data!.data() as Map<String, dynamic>;
+            final data = userSnapshot.data!.data() as Map<String, dynamic>?;
+            if (data == null) {
+              return const LoginScreen();
+            }
+            if (data['isActive'] == false) {
+              return const _InactiveUserRedirect();
+            }
             final role = (data['role'] as String?) ?? 'patient';
             if (role == 'doctor') return const DoctorScreen();
             if (role == 'admin') return const AdminScreen();
@@ -71,6 +77,25 @@ class AuthWrapper extends StatelessWidget {
       },
     );
   }
+}
+
+/// Signs out deactivated users and returns to login.
+class _InactiveUserRedirect extends StatefulWidget {
+  const _InactiveUserRedirect();
+
+  @override
+  State<_InactiveUserRedirect> createState() => _InactiveUserRedirectState();
+}
+
+class _InactiveUserRedirectState extends State<_InactiveUserRedirect> {
+  @override
+  void initState() {
+    super.initState();
+    FirebaseAuth.instance.signOut();
+  }
+
+  @override
+  Widget build(BuildContext context) => const LoginScreen();
 }
 
 class SplashScreen extends StatelessWidget {

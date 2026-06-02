@@ -1,0 +1,103 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function hasRole(role) {
+      return isSignedIn() && userDoc().data.role == role;
+    }
+
+    // Allows a signed-in patient to update ONLY the cached review aggregate
+    // (avgRating, reviewCount) on a doctor's user doc — used by the review
+    // submission transaction.
+    function isReviewAggregateUpdate() {
+      return isSignedIn() &&
+        request.resource.data.diff(resource.data)
+          .affectedKeys().hasOnly(['avgRating', 'reviewCount']);
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || hasRole('admin') || hasRole('doctor') ||
+        (isSignedIn() && resource.data.role == 'doctor');
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isOwner(userId) || hasRole('admin') ||
+        isReviewAggregateUpdate();
+      allow delete: if hasRole('admin');
+
+      match /medications/{medId} {
+        allow read: if isOwner(userId) || hasRole('doctor') || hasRole('admin');
+        allow write: if isOwner(userId);
+      }
+
+      match /healthRecords/{recordId} {
+        allow read: if isOwner(userId) || hasRole('doctor') || hasRole('admin');
+        allow write: if isOwner(userId);
+      }
+
+      match /medicationLogs/{logId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    match /consultations/{consultationId} {
+      allow read: if isSignedIn() && (
+        resource.data.doctorId == request.auth.uid ||
+        resource.data.patientId == request.auth.uid ||
+        hasRole('admin')
+      );
+      allow create: if isSignedIn() && (
+        request.resource.data.patientId == request.auth.uid ||
+        (hasRole('doctor') && request.resource.data.doctorId == request.auth.uid)
+      );
+      allow update, delete: if hasRole('admin') ||
+        resource.data.patientId == request.auth.uid ||
+        (hasRole('doctor') && resource.data.doctorId == request.auth.uid);
+    }
+
+    match /prescriptions/{prescriptionId} {
+      allow read: if isSignedIn() && (
+        resource.data.doctorId == request.auth.uid ||
+        resource.data.patientId == request.auth.uid ||
+        hasRole('admin')
+      );
+      allow create: if hasRole('doctor') &&
+        request.resource.data.doctorId == request.auth.uid;
+      allow update, delete: if hasRole('admin') ||
+        (hasRole('doctor') && resource.data.doctorId == request.auth.uid);
+    }
+
+    match /appointments/{appointmentId} {
+      allow read: if isSignedIn() && (
+        resource.data.doctorId == request.auth.uid ||
+        resource.data.patientId == request.auth.uid ||
+        hasRole('admin')
+      );
+      allow create: if isSignedIn() && (
+        request.resource.data.patientId == request.auth.uid ||
+        (hasRole('doctor') && request.resource.data.doctorId == request.auth.uid)
+      );
+      allow update, delete: if hasRole('admin') ||
+        resource.data.patientId == request.auth.uid ||
+        (hasRole('doctor') && resource.data.doctorId == request.auth.uid);
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() &&
+        request.resource.data.patientId == request.auth.uid;
+      allow update, delete: if hasRole('admin') ||
+        (isSignedIn() && resource.data.patientId == request.auth.uid);
+    }
+  }
+}
