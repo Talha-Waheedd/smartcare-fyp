@@ -78,7 +78,7 @@ class _AiSuggestionScreenState extends State<AiSuggestionScreen> {
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
-        title: const Text('AI Wellness Suggestions'),
+        title: const Text('Personalized Wellness Tips'),
         backgroundColor: Colors.purple,
         foregroundColor: Colors.white,
         actions: [
@@ -110,9 +110,9 @@ class _AiSuggestionScreenState extends State<AiSuggestionScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '⚠️ These are general wellness suggestions only. '
-                    'They do not replace professional medical advice. '
-                    'Always consult your doctor for medical decisions.',
+                    'Wellness tips only — generated from your profile, medications, '
+                    'and health records using a rule-based expert system. '
+                    'Not medical advice. Always consult your doctor.',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.amber.shade900,
@@ -132,7 +132,7 @@ class _AiSuggestionScreenState extends State<AiSuggestionScreen> {
                       children: [
                         CircularProgressIndicator(color: Colors.purple),
                         SizedBox(height: 16),
-                        Text('Analyzing your health profile...',
+                        Text('Building recommendations from your health profile...',
                             style: TextStyle(color: Colors.grey)),
                       ],
                     ),
@@ -278,15 +278,43 @@ class _AiSuggestionScreenState extends State<AiSuggestionScreen> {
                       style: const TextStyle(
                           fontSize: 13, height: 1.5),
                     ),
+                    if (suggestion.triggerReason.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.purple.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.lightbulb_outline,
+                                size: 14, color: Colors.purple.shade400),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'Why: ${suggestion.triggerReason}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.purple.shade700,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 8),
-                    // AI generated label
                     Row(
                       children: [
-                        Icon(Icons.auto_awesome,
+                        Icon(Icons.rule,
                             size: 12, color: Colors.purple.shade300),
                         const SizedBox(width: 4),
                         Text(
-                          'AI Generated · Not medical advice',
+                          'Personalized · Rule-based · Not medical advice',
                           style: TextStyle(
                               fontSize: 10,
                               color: Colors.purple.shade300),

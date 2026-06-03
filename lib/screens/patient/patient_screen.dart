@@ -212,7 +212,7 @@ class _PatientScreenState extends State<PatientScreen> {
                     ),
                     _ActionTile(
                       icon: Icons.psychology_rounded,
-                      label: 'AI Suggestions',
+                      label: 'Wellness Tips',
                       subtitle: 'Wellness tips',
                       color: const Color(0xFF7C3AED),
                       onTap: () => Navigator.push(context,

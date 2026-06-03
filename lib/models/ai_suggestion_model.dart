@@ -48,6 +48,10 @@ class AiSuggestionModel {
   final SuggestionCategory category;
   final String priority;    // 'high', 'medium', 'low'
   final DateTime generatedAt;
+  /// Why this suggestion was shown (for UI and viva demos).
+  final String triggerReason;
+  /// Higher = more relevant to this patient (used for ranking).
+  final int relevanceScore;
 
   const AiSuggestionModel({
     required this.id,
@@ -56,6 +60,8 @@ class AiSuggestionModel {
     required this.category,
     required this.priority,
     required this.generatedAt,
+    this.triggerReason = '',
+    this.relevanceScore = 50,
   });
 
   // Priority color for UI

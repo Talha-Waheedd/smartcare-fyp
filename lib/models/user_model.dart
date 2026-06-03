@@ -1,3 +1,5 @@
+import 'health_profile_model.dart';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // FILE: lib/models/user_model.dart
 // PURPOSE: Defines the UserModel data class and UserRole enum used throughout
@@ -56,6 +58,7 @@ class UserModel {
   final String bloodGroup;
   final String allergies;       // Comma-separated / free text
   final String emergencyContact;
+  final HealthProfileModel healthProfile;
 
   // ── Doctor profile ─────────────────────────────────────────────────────────
   final String specialization;
@@ -89,6 +92,7 @@ class UserModel {
     this.bloodGroup = '',
     this.allergies = '',
     this.emergencyContact = '',
+    this.healthProfile = const HealthProfileModel(),
     this.specialization = '',
     this.experienceYears = 0,
     this.bio = '',
@@ -118,6 +122,9 @@ class UserModel {
       bloodGroup: map['bloodGroup'] ?? '',
       allergies: map['allergies'] ?? '',
       emergencyContact: map['emergencyContact'] ?? '',
+      healthProfile: HealthProfileModel.fromMap(
+        map['healthProfile'] as Map<String, dynamic>?,
+      ),
       specialization: map['specialization'] ?? '',
       experienceYears: (map['experienceYears'] as num?)?.toInt() ?? 0,
       bio: map['bio'] ?? '',
@@ -148,6 +155,7 @@ class UserModel {
       'bloodGroup': bloodGroup,
       'allergies': allergies,
       'emergencyContact': emergencyContact,
+      'healthProfile': healthProfile.toMap(),
       'specialization': specialization,
       'experienceYears': experienceYears,
       'bio': bio,
@@ -187,6 +195,7 @@ class UserModel {
     String? bloodGroup,
     String? allergies,
     String? emergencyContact,
+    HealthProfileModel? healthProfile,
     String? specialization,
     int? experienceYears,
     String? bio,
@@ -213,6 +222,7 @@ class UserModel {
       bloodGroup: bloodGroup ?? this.bloodGroup,
       allergies: allergies ?? this.allergies,
       emergencyContact: emergencyContact ?? this.emergencyContact,
+      healthProfile: healthProfile ?? this.healthProfile,
       specialization: specialization ?? this.specialization,
       experienceYears: experienceYears ?? this.experienceYears,
       bio: bio ?? this.bio,

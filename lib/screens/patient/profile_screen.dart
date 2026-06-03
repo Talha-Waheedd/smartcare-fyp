@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../models/health_profile_model.dart';
 import '../../services/user_service.dart';
 import '../../theme/app_theme.dart';
 import '../auth/login_screen.dart';
@@ -25,9 +26,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _dobCtrl = TextEditingController();
   final _allergiesCtrl = TextEditingController();
   final _emergencyCtrl = TextEditingController();
+  final _weightCtrl = TextEditingController();
+  final _heightCtrl = TextEditingController();
 
   String _gender = '';
   String _bloodGroup = '';
+  String _activityLevel = '';
+  String _smokingStatus = '';
+  double _sleepHours = 7;
+  final Set<String> _chronicConditions = {};
 
   String? _uid;
   bool _loading = true;
@@ -63,6 +70,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _dobCtrl.dispose();
     _allergiesCtrl.dispose();
     _emergencyCtrl.dispose();
+    _weightCtrl.dispose();
+    _heightCtrl.dispose();
     super.dispose();
   }
 
@@ -78,6 +87,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _emergencyCtrl.text = user.emergencyContact;
       _gender = _genders.contains(user.gender) ? user.gender : '';
       _bloodGroup = _bloodGroups.contains(user.bloodGroup) ? user.bloodGroup : '';
+      final hp = user.healthProfile;
+      if (hp.weightKg > 0) _weightCtrl.text = hp.weightKg.toString();
+      if (hp.heightCm > 0) _heightCtrl.text = hp.heightCm.toString();
+      _activityLevel = HealthProfileModel.activityLevels.contains(hp.activityLevel)
+          ? hp.activityLevel
+          : '';
+      _smokingStatus = HealthProfileModel.smokingStatuses.contains(hp.smokingStatus)
+          ? hp.smokingStatus
+          : '';
+      _sleepHours = hp.sleepHoursPerNight > 0 ? hp.sleepHoursPerNight : 7;
+      _chronicConditions
+        ..clear()
+        ..addAll(hp.chronicConditions);
     }
     setState(() => _loading = false);
   }
@@ -100,6 +122,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
+      final weight = double.tryParse(_weightCtrl.text.trim()) ?? 0;
+      final height = double.tryParse(_heightCtrl.text.trim()) ?? 0;
       await _userService.updateProfile(_uid!, {
         'name': _nameCtrl.text.trim(),
         'phone': _phoneCtrl.text.trim(),
@@ -109,6 +133,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'bloodGroup': _bloodGroup,
         'allergies': _allergiesCtrl.text.trim(),
         'emergencyContact': _emergencyCtrl.text.trim(),
+        'healthProfile': HealthProfileModel(
+          weightKg: weight,
+          heightCm: height,
+          activityLevel: _activityLevel,
+          sleepHoursPerNight: _sleepHours,
+          smokingStatus: _smokingStatus,
+          chronicConditions: _chronicConditions.toList(),
+        ).toMap(),
       });
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -244,6 +276,108 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         hintText: 'Name & phone',
                         prefixIcon: Icon(Icons.emergency_outlined),
                       ),
+                    ),
+                    const SizedBox(height: 24),
+                    _sectionLabel('Health & Lifestyle'),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Used for personalized wellness suggestions (not medical diagnosis).',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _weightCtrl,
+                            keyboardType:
+                                const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(
+                              labelText: 'Weight (kg)',
+                              prefixIcon: Icon(Icons.monitor_weight_outlined),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _heightCtrl,
+                            keyboardType:
+                                const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(
+                              labelText: 'Height (cm)',
+                              prefixIcon: Icon(Icons.height_outlined),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    DropdownButtonFormField<String>(
+                      value: _activityLevel.isEmpty ? null : _activityLevel,
+                      decoration: const InputDecoration(
+                        labelText: 'Activity Level',
+                        prefixIcon: Icon(Icons.directions_walk_outlined),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                            value: 'sedentary', child: Text('Sedentary')),
+                        DropdownMenuItem(value: 'light', child: Text('Light')),
+                        DropdownMenuItem(
+                            value: 'moderate', child: Text('Moderate')),
+                        DropdownMenuItem(value: 'active', child: Text('Active')),
+                      ],
+                      onChanged: (v) => setState(() => _activityLevel = v ?? ''),
+                    ),
+                    const SizedBox(height: 14),
+                    Text('Sleep: ${_sleepHours.toStringAsFixed(0)} hours/night',
+                        style: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w500)),
+                    Slider(
+                      value: _sleepHours,
+                      min: 3,
+                      max: 12,
+                      divisions: 9,
+                      label: '${_sleepHours.round()}h',
+                      onChanged: (v) => setState(() => _sleepHours = v),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      value: _smokingStatus.isEmpty ? null : _smokingStatus,
+                      decoration: const InputDecoration(
+                        labelText: 'Smoking Status',
+                        prefixIcon: Icon(Icons.smoke_free_outlined),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'never', child: Text('Never')),
+                        DropdownMenuItem(value: 'former', child: Text('Former')),
+                        DropdownMenuItem(value: 'current', child: Text('Current')),
+                      ],
+                      onChanged: (v) => setState(() => _smokingStatus = v ?? ''),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text('Chronic Conditions',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: HealthProfileModel.chronicConditionOptions
+                          .map((c) => FilterChip(
+                                label: Text(c, style: const TextStyle(fontSize: 12)),
+                                selected: _chronicConditions.contains(c),
+                                onSelected: (sel) {
+                                  setState(() {
+                                    if (sel) {
+                                      _chronicConditions.add(c);
+                                    } else {
+                                      _chronicConditions.remove(c);
+                                    }
+                                  });
+                                },
+                              ))
+                          .toList(),
                     ),
                     const SizedBox(height: 28),
                     SizedBox(
