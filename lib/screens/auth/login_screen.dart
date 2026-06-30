@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:animate_do/animate_do.dart';
 import '../../theme/app_theme.dart';
 import 'register_screen.dart';
 import '../patient/patient_screen.dart';
@@ -123,190 +124,223 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 56),
-
-              // ── Logo ──────────────────────────────────────────────────
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.primary, AppColors.primaryDark],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withOpacity(0.35),
-                      blurRadius: 20, offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: const Icon(Icons.health_and_safety_rounded,
-                    size: 52, color: Colors.white),
-              ),
-              const SizedBox(height: 20),
-              const Text('SmartCare',
-                  style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                      letterSpacing: 0.3)),
-              const Text('AI Powered Health Assistant',
-                  style: TextStyle(
-                      fontSize: 13, color: AppColors.textSecondary)),
-
-              const SizedBox(height: 40),
-
-              // ── Card ──────────────────────────────────────────────────
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: AppColors.border),
-                  boxShadow: [
-                    BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 20, offset: const Offset(0, 4)),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Welcome back',
-                        style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary)),
-                    const SizedBox(height: 4),
-                    const Text('Sign in to your account',
-                        style: TextStyle(
-                            color: AppColors.textSecondary, fontSize: 13)),
-                    const SizedBox(height: 24),
-
-                    // Error banner
-                    if (_errorMsg != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          color: AppColors.error.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                              color: AppColors.error.withOpacity(0.3)),
-                        ),
-                        child: Row(children: [
-                          const Icon(Icons.error_outline,
-                              color: AppColors.error, size: 16),
-                          const SizedBox(width: 8),
-                          Expanded(
-                              child: Text(_errorMsg!,
-                                  style: const TextStyle(
-                                      color: AppColors.error, fontSize: 13))),
-                        ]),
-                      ),
-                    ],
-
-                    // Email
-                    TextField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
-                        labelText: 'Email Address',
-                        prefixIcon: Icon(Icons.email_outlined, size: 20),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-
-                    // Password
-                    TextField(
-                      controller: _passwordController,
-                      obscureText: _obscurePass,
-                      decoration: InputDecoration(
-                        labelText: 'Password',
-                        prefixIcon:
-                            const Icon(Icons.lock_outline, size: 20),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                              _obscurePass
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
-                              size: 20, color: AppColors.textSecondary),
-                          onPressed: () =>
-                              setState(() => _obscurePass = !_obscurePass),
-                        ),
-                      ),
-                    ),
-
-                    // Forgot password
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: _showForgotPassword,
-                        child: const Text('Forgot Password?',
-                            style: TextStyle(
-                                color: AppColors.primary, fontSize: 13)),
-                      ),
-                    ),
-
-                    const SizedBox(height: 4),
-
-                    // Login button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _login,
-                        child: _isLoading
-                            ? const SizedBox(width: 22, height: 22,
-                                child: CircularProgressIndicator(
-                                    color: Colors.white, strokeWidth: 2.5))
-                            : const Text('Sign In',
-                                style: TextStyle(fontSize: 16)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Register link
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+      backgroundColor: AppColors.surface,
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppGradients.loginHero),
+        child: SafeArea(
+          bottom: false,
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: size.height - 24),
+              child: Column(
                 children: [
-                  const Text("Don't have an account? ",
-                      style: TextStyle(
-                          color: AppColors.textSecondary, fontSize: 14)),
-                  GestureDetector(
-                    onTap: () => Navigator.push(context,
-                        MaterialPageRoute(
-                            builder: (_) => const RegisterScreen())),
-                    child: const Text('Register',
-                        style: TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14)),
+                  // ── TOP HERO SECTION ──────────────────────────────────
+                  SizedBox(
+                    height: size.height * 0.38,
+                    width: double.infinity,
+                    child: Stack(
+                      children: [
+                        // Floating background healthcare icons (10% opacity)
+                        Positioned(
+                          top: 30,
+                          left: 24,
+                          child: Icon(Icons.favorite,
+                              size: 40,
+                              color: Colors.white.withOpacity(0.10)),
+                        ),
+                        Positioned(
+                          top: 90,
+                          right: 30,
+                          child: Icon(Icons.medication_rounded,
+                              size: 52,
+                              color: Colors.white.withOpacity(0.10)),
+                        ),
+                        Positioned(
+                          bottom: 30,
+                          left: 40,
+                          child: Icon(Icons.monitor_heart_rounded,
+                              size: 44,
+                              color: Colors.white.withOpacity(0.10)),
+                        ),
+                        // Logo + wordmark
+                        Center(
+                          child: FadeInDown(
+                            duration: const Duration(milliseconds: 600),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                AppLogo(size: AppLogoSize.large),
+                                SizedBox(height: 18),
+                                AppLogoText(
+                                  fontSize: 32,
+                                  subtitle: 'Your Personal Health Assistant',
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // ── BOTTOM CARD SECTION ───────────────────────────────
+                  Expanded(
+                    child: SlideInUp(
+                      duration: const Duration(milliseconds: 500),
+                      from: 120,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+                        decoration: const BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(28),
+                            topRight: Radius.circular(28),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Welcome Back',
+                                style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textPrimary)),
+                            const SizedBox(height: 4),
+                            const Text('Sign in to continue',
+                                style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 14)),
+                            const SizedBox(height: 24),
+
+                            // Error banner
+                            if (_errorMsg != null) ...[
+                              FadeIn(
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  margin: const EdgeInsets.only(bottom: 16),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(colors: [
+                                      AppColors.error,
+                                      AppColors.error.withOpacity(0.8),
+                                    ]),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Row(children: [
+                                    const Icon(Icons.error_outline,
+                                        color: Colors.white, size: 18),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                        child: Text(_errorMsg!,
+                                            style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 13))),
+                                  ]),
+                                ),
+                              ),
+                            ],
+
+                            // Email
+                            TextField(
+                              controller: _emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              decoration: const InputDecoration(
+                                labelText: 'Email Address',
+                                prefixIcon:
+                                    Icon(Icons.email_outlined, size: 20),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+
+                            // Password
+                            TextField(
+                              controller: _passwordController,
+                              obscureText: _obscurePass,
+                              decoration: InputDecoration(
+                                labelText: 'Password',
+                                prefixIcon:
+                                    const Icon(Icons.lock_outline, size: 20),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                      _obscurePass
+                                          ? Icons.visibility_off_outlined
+                                          : Icons.visibility_outlined,
+                                      size: 20,
+                                      color: AppColors.textSecondary),
+                                  onPressed: () => setState(
+                                      () => _obscurePass = !_obscurePass),
+                                ),
+                              ),
+                            ),
+
+                            // Forgot password
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: _showForgotPassword,
+                                child: const Text('Forgot Password?',
+                                    style: TextStyle(
+                                        color: AppColors.primary,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600)),
+                              ),
+                            ),
+
+                            const SizedBox(height: 4),
+
+                            // Login button
+                            GradientButton(
+                              label: 'Sign In',
+                              loading: _isLoading,
+                              onPressed: _isLoading ? null : _login,
+                            ),
+
+                            const SizedBox(height: 20),
+
+                            // Register link
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Text("Don't have an account? ",
+                                    style: TextStyle(
+                                        color: AppColors.textSecondary,
+                                        fontSize: 14)),
+                                GestureDetector(
+                                  onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (_) =>
+                                              const RegisterScreen())),
+                                  child: const Text('Register',
+                                      style: TextStyle(
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14)),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            const Center(
+                              child: Text(
+                                'Doctors: Contact your administrator for access.',
+                                style: TextStyle(
+                                    color: AppColors.textHint,
+                                    fontSize: 11,
+                                    fontStyle: FontStyle.italic),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Doctors: Contact your administrator for access.',
-                style: TextStyle(
-                    color: AppColors.textHint, fontSize: 11),
-              ),
-              const SizedBox(height: 32),
-            ],
+            ),
           ),
         ),
       ),

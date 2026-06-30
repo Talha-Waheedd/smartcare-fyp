@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:animate_do/animate_do.dart';
 import 'firebase_options.dart';
 import 'theme/app_theme.dart';
 
@@ -104,36 +105,144 @@ class SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.primary,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                shape: BoxShape.circle,
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(gradient: AppGradients.loginHero),
+        child: SafeArea(
+          child: Stack(
+            children: [
+              // ── Decorative pulse rings + logo + wordmark ──────────────
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 160,
+                      height: 160,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          _PulseRing(
+                              size: 160,
+                              duration: const Duration(milliseconds: 2200)),
+                          _PulseRing(
+                              size: 130,
+                              duration: const Duration(milliseconds: 1800),
+                              delay: const Duration(milliseconds: 400)),
+                          ElasticIn(
+                            duration: const Duration(milliseconds: 1100),
+                            child: const AppLogo(size: AppLogoSize.large),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    FadeInUp(
+                      delay: const Duration(milliseconds: 400),
+                      duration: const Duration(milliseconds: 600),
+                      child: const AppLogoText(fontSize: 34),
+                    ),
+                    const SizedBox(height: 8),
+                    FadeInUp(
+                      delay: const Duration(milliseconds: 600),
+                      duration: const Duration(milliseconds: 600),
+                      child: Text('AI Powered Health Assistant',
+                          style: TextStyle(
+                              color: Colors.white.withOpacity(0.7),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w300)),
+                    ),
+                  ],
+                ),
               ),
-              child: const Icon(Icons.health_and_safety_rounded,
-                  size: 64, color: Colors.white),
-            ),
-            const SizedBox(height: 24),
-            const Text('SmartCare',
-                style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    letterSpacing: 0.5)),
-            const SizedBox(height: 6),
-            const Text('AI Powered Health Assistant',
-                style: TextStyle(color: Colors.white70, fontSize: 14)),
-            const SizedBox(height: 48),
-            const CircularProgressIndicator(
-                color: Colors.white, strokeWidth: 2.5),
-          ],
+
+              // ── Thin gradient loading line at the bottom ──────────────
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 36,
+                child: FadeIn(
+                  delay: const Duration(milliseconds: 800),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 120,
+                        height: 3,
+                        decoration: BoxDecoration(
+                          gradient: AppGradients.button,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text('Loading...',
+                          style: TextStyle(
+                              color: Colors.white.withOpacity(0.6),
+                              fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+/// Decorative expanding/fading ring used purely for splash visuals.
+class _PulseRing extends StatefulWidget {
+  final double size;
+  final Duration duration;
+  final Duration delay;
+  const _PulseRing({
+    required this.size,
+    required this.duration,
+    this.delay = Duration.zero,
+  });
+
+  @override
+  State<_PulseRing> createState() => _PulseRingState();
+}
+
+class _PulseRingState extends State<_PulseRing>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c;
+
+  @override
+  void initState() {
+    super.initState();
+    _c = AnimationController(vsync: this, duration: widget.duration);
+    Future.delayed(widget.delay, () {
+      if (mounted) _c.repeat();
+    });
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (_, __) {
+        final t = _c.value;
+        return Container(
+          width: widget.size * (0.7 + 0.3 * t),
+          height: widget.size * (0.7 + 0.3 * t),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: Colors.white.withOpacity((1 - t) * 0.4),
+              width: 2,
+            ),
+          ),
+        );
+      },
     );
   }
 }

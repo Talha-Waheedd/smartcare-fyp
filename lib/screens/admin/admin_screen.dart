@@ -1,5 +1,4 @@
-// FILE: lib/screens/admin/admin_screen.dart
-
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -19,8 +18,8 @@ class _AdminScreenState extends State<AdminScreen> {
   String _searchQuery = '';
   String _filterRole = 'all';
 
-  static const _c1 = Color(0xFF7C3AED);
-  static const _c2 = Color(0xFF6D28D9);
+  static const _c1 = Color(0xFF7B5EA7);
+  static const _c2 = Color(0xFF4A3580);
 
   @override
   void dispose() {
@@ -224,6 +223,9 @@ class _AdminScreenState extends State<AdminScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: _c1,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(gradient: AppGradients.adminHeader),
+        ),
         title: const Text('SmartCare Admin'),
         automaticallyImplyLeading: false,
         actions: [
@@ -239,12 +241,20 @@ class _AdminScreenState extends State<AdminScreen> {
               onPressed: _logout),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddDoctorDialog,
-        icon: const Icon(Icons.person_add_outlined),
-        label: const Text('Add Doctor'),
-        backgroundColor: _c1,
-        foregroundColor: Colors.white,
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          gradient: AppGradients.adminHeader,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: AppShadows.button(_c1),
+        ),
+        child: FloatingActionButton.extended(
+          onPressed: _showAddDoctorDialog,
+          icon: const Icon(Icons.person_add_outlined),
+          label: const Text('Add Doctor'),
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -432,31 +442,54 @@ class _AdminScreenState extends State<AdminScreen> {
 
                         return Container(
                           margin:
-                              const EdgeInsets.only(bottom: 10),
+                              const EdgeInsets.only(bottom: 12),
                           decoration: BoxDecoration(
                             color: AppColors.surface,
                             borderRadius:
-                                BorderRadius.circular(14),
-                            border: Border.all(
-                                color: isActive
-                                    ? AppColors.border
-                                    : AppColors.error
-                                        .withOpacity(0.3)),
+                                BorderRadius.circular(AppRadius.card),
+                            boxShadow: AppShadows.card,
+                            border: isActive
+                                ? null
+                                : Border.all(
+                                    color: AppColors.error
+                                        .withOpacity(0.4)),
                           ),
+                          child: ClipRRect(
+                            borderRadius:
+                                BorderRadius.circular(AppRadius.card),
+                            child: IntrinsicHeight(
+                              child: Row(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.stretch,
+                                children: [
+                                  // Left role accent bar
+                                  Container(width: 5, color: roleColor),
+                                  Expanded(
                           child: ListTile(
                             contentPadding:
                                 const EdgeInsets.symmetric(
                                     horizontal: 16, vertical: 6),
-                            leading: CircleAvatar(
-                              radius: 22,
-                              backgroundColor:
-                                  roleColor.withOpacity(0.12),
+                            leading: Container(
+                              width: 46,
+                              height: 46,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    roleColor,
+                                    roleColor.withOpacity(0.7),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                shape: BoxShape.circle,
+                              ),
                               child: Text(
                                 name.isNotEmpty
                                     ? name[0].toUpperCase()
                                     : '?',
-                                style: TextStyle(
-                                    color: roleColor,
+                                style: const TextStyle(
+                                    color: Colors.white,
                                     fontWeight: FontWeight.bold),
                               ),
                             ),
@@ -473,19 +506,23 @@ class _AdminScreenState extends State<AdminScreen> {
                               Container(
                                 padding:
                                     const EdgeInsets.symmetric(
-                                        horizontal: 7,
-                                        vertical: 3),
+                                        horizontal: 9,
+                                        vertical: 4),
                                 decoration: BoxDecoration(
-                                  color:
-                                      roleColor.withOpacity(0.1),
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      roleColor,
+                                      roleColor.withOpacity(0.7),
+                                    ],
+                                  ),
                                   borderRadius:
-                                      BorderRadius.circular(6),
+                                      BorderRadius.circular(20),
                                 ),
                                 child: Text(
                                     role.toUpperCase(),
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                         fontSize: 9,
-                                        color: roleColor,
+                                        color: Colors.white,
                                         fontWeight:
                                             FontWeight.w700)),
                               ),
@@ -568,6 +605,11 @@ class _AdminScreenState extends State<AdminScreen> {
                               ],
                             ),
                           ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         );
                       },
                     ),
@@ -578,24 +620,28 @@ class _AdminScreenState extends State<AdminScreen> {
     );
   }
 
-  Widget _chip(String value, String label, Color textColor) =>
-      Container(
-        padding: const EdgeInsets.symmetric(
-            horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white24),
+  Widget _chip(String value, String label, Color textColor) => ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.20),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white24),
+            ),
+            child: Column(children: [
+              Text(value,
+                  style: TextStyle(
+                      color: textColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20)),
+              Text(label,
+                  style: const TextStyle(
+                      color: Colors.white70, fontSize: 10)),
+            ]),
+          ),
         ),
-        child: Column(children: [
-          Text(value,
-              style: TextStyle(
-                  color: textColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20)),
-          Text(label,
-              style: const TextStyle(
-                  color: Colors.white70, fontSize: 10)),
-        ]),
       );
 }

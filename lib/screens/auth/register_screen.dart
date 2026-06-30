@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:animate_do/animate_do.dart';
 import '../../theme/app_theme.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -98,134 +99,298 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    int order = 0;
+    Widget staggered(Widget child) {
+      final widget = FadeInUp(
+        delay: Duration(milliseconds: 100 + (order * 50)),
+        duration: const Duration(milliseconds: 400),
+        from: 20,
+        child: child,
+      );
+      order++;
+      return widget;
+    }
+
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        foregroundColor: AppColors.textPrimary,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Create Account',
-                  style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary)),
-              const SizedBox(height: 4),
-              const Text('Patient registration — free & secure',
-                  style: TextStyle(
-                      color: AppColors.textSecondary, fontSize: 14)),
-              const SizedBox(height: 28),
-
-              // Error banner
-              if (_errorMsg != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: AppColors.error.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.error.withOpacity(0.3)),
-                  ),
-                  child: Row(children: [
-                    const Icon(Icons.error_outline, color: AppColors.error, size: 16),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(_errorMsg!,
-                        style: const TextStyle(color: AppColors.error, fontSize: 13))),
-                  ]),
-                ),
-              ],
-
-              // Full Name
-              TextField(controller: _nameCtrl,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                      labelText: 'Full Name',
-                      prefixIcon: Icon(Icons.person_outline, size: 20))),
-              const SizedBox(height: 14),
-
-              // Email
-              TextField(controller: _emailCtrl,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                      labelText: 'Email Address',
-                      prefixIcon: Icon(Icons.email_outlined, size: 20))),
-              const SizedBox(height: 14),
-
-              // Password
-              TextField(
-                controller: _passCtrl,
-                obscureText: _obscurePass,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  prefixIcon: const Icon(Icons.lock_outline, size: 20),
-                  suffixIcon: IconButton(
-                    icon: Icon(_obscurePass
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                        size: 20, color: AppColors.textSecondary),
-                    onPressed: () => setState(() => _obscurePass = !_obscurePass),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-
-              // Confirm Password
-              TextField(
-                controller: _confirmCtrl,
-                obscureText: _obscureConf,
-                decoration: InputDecoration(
-                  labelText: 'Confirm Password',
-                  prefixIcon: const Icon(Icons.lock_outline, size: 20),
-                  suffixIcon: IconButton(
-                    icon: Icon(_obscureConf
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                        size: 20, color: AppColors.textSecondary),
-                    onPressed: () => setState(() => _obscureConf = !_obscureConf),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Terms checkbox
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      backgroundColor: AppColors.surface,
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppGradients.loginHero),
+        child: SafeArea(
+          bottom: false,
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: size.height - 24),
+              child: Column(
                 children: [
-                  Checkbox(
-                    value: _acceptTerms,
-                    activeColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4)),
-                    onChanged: (v) => setState(() => _acceptTerms = v ?? false),
+                  // ── TOP HERO (30%) ────────────────────────────────────
+                  SizedBox(
+                    height: size.height * 0.26,
+                    width: double.infinity,
+                    child: Stack(
+                      children: [
+                        Positioned(
+                          top: 8,
+                          left: 8,
+                          child: IconButton(
+                            icon: const Icon(Icons.arrow_back_ios_new,
+                                size: 20, color: Colors.white),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ),
+                        Center(
+                          child: FadeInDown(
+                            duration: const Duration(milliseconds: 600),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                AppLogo(size: AppLogoSize.large),
+                                SizedBox(height: 14),
+                                AppLogoText(fontSize: 28),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+
+                  // ── BOTTOM CARD ───────────────────────────────────────
                   Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: RichText(
-                        text: const TextSpan(
-                          style: TextStyle(
-                              color: AppColors.textSecondary, fontSize: 13),
+                    child: SlideInUp(
+                      duration: const Duration(milliseconds: 500),
+                      from: 120,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+                        decoration: const BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(28),
+                            topRight: Radius.circular(28),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            TextSpan(text: 'I agree to the '),
-                            TextSpan(text: 'Terms of Service',
+                            staggered(const Text('Create Account',
                                 style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w600)),
-                            TextSpan(text: ' and '),
-                            TextSpan(text: 'Privacy Policy',
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textPrimary))),
+                            const SizedBox(height: 4),
+                            staggered(const Text(
+                                'Join thousands managing their health smartly',
                                 style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w600)),
+                                    color: AppColors.textSecondary,
+                                    fontSize: 14))),
+                            const SizedBox(height: 24),
+
+                            // Error banner
+                            if (_errorMsg != null) ...[
+                              FadeIn(
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  margin: const EdgeInsets.only(bottom: 16),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(colors: [
+                                      AppColors.error,
+                                      AppColors.error.withOpacity(0.8),
+                                    ]),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Row(children: [
+                                    const Icon(Icons.error_outline,
+                                        color: Colors.white, size: 18),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                        child: Text(_errorMsg!,
+                                            style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 13))),
+                                  ]),
+                                ),
+                              ),
+                            ],
+
+                            // Full Name
+                            staggered(TextField(
+                                controller: _nameCtrl,
+                                textCapitalization: TextCapitalization.words,
+                                decoration: const InputDecoration(
+                                    labelText: 'Full Name',
+                                    prefixIcon: Icon(Icons.person_outline,
+                                        size: 20)))),
+                            const SizedBox(height: 14),
+
+                            // Email
+                            staggered(TextField(
+                                controller: _emailCtrl,
+                                keyboardType: TextInputType.emailAddress,
+                                decoration: const InputDecoration(
+                                    labelText: 'Email Address',
+                                    prefixIcon: Icon(Icons.email_outlined,
+                                        size: 20)))),
+                            const SizedBox(height: 14),
+
+                            // Password
+                            staggered(TextField(
+                              controller: _passCtrl,
+                              obscureText: _obscurePass,
+                              decoration: InputDecoration(
+                                labelText: 'Password',
+                                prefixIcon:
+                                    const Icon(Icons.lock_outline, size: 20),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                      _obscurePass
+                                          ? Icons.visibility_off_outlined
+                                          : Icons.visibility_outlined,
+                                      size: 20,
+                                      color: AppColors.textSecondary),
+                                  onPressed: () => setState(
+                                      () => _obscurePass = !_obscurePass),
+                                ),
+                              ),
+                            )),
+                            const SizedBox(height: 14),
+
+                            // Confirm Password
+                            staggered(TextField(
+                              controller: _confirmCtrl,
+                              obscureText: _obscureConf,
+                              decoration: InputDecoration(
+                                labelText: 'Confirm Password',
+                                prefixIcon:
+                                    const Icon(Icons.lock_outline, size: 20),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                      _obscureConf
+                                          ? Icons.visibility_off_outlined
+                                          : Icons.visibility_outlined,
+                                      size: 20,
+                                      color: AppColors.textSecondary),
+                                  onPressed: () => setState(
+                                      () => _obscureConf = !_obscureConf),
+                                ),
+                              ),
+                            )),
+                            const SizedBox(height: 16),
+
+                            // Terms checkbox
+                            staggered(Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Checkbox(
+                                  value: _acceptTerms,
+                                  activeColor: AppColors.primary,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(4)),
+                                  onChanged: (v) => setState(
+                                      () => _acceptTerms = v ?? false),
+                                ),
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(top: 12),
+                                    child: RichText(
+                                      text: const TextSpan(
+                                        style: TextStyle(
+                                            color: AppColors.textSecondary,
+                                            fontSize: 13),
+                                        children: [
+                                          TextSpan(
+                                              text: 'I agree to the '),
+                                          TextSpan(
+                                              text: 'Terms of Service',
+                                              style: TextStyle(
+                                                  color: AppColors.primary,
+                                                  fontWeight:
+                                                      FontWeight.w600)),
+                                          TextSpan(text: ' and '),
+                                          TextSpan(
+                                              text: 'Privacy Policy',
+                                              style: TextStyle(
+                                                  color: AppColors.primary,
+                                                  fontWeight:
+                                                      FontWeight.w600)),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )),
+
+                            const SizedBox(height: 8),
+
+                            // Disclaimer
+                            staggered(Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFFBEA),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                    color: const Color(0xFFFFD27A)),
+                              ),
+                              child: Row(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.warning
+                                          .withOpacity(0.15),
+                                      borderRadius:
+                                          BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(Icons.info_outline,
+                                        color: Color(0xFFD97706), size: 16),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  const Expanded(
+                                    child: Text(
+                                      'SmartCare provides wellness suggestions only. '
+                                      'It does not diagnose or prescribe. Always consult a doctor.',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF92400E)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )),
+                            const SizedBox(height: 24),
+
+                            // Register button
+                            staggered(GradientButton(
+                              label: 'Create Account',
+                              loading: _isLoading,
+                              onPressed: _isLoading ? null : _register,
+                            )),
+
+                            const SizedBox(height: 16),
+                            Center(
+                              child: GestureDetector(
+                                onTap: () => Navigator.pop(context),
+                                child: const Text.rich(TextSpan(children: [
+                                  TextSpan(
+                                      text: 'Already have an account? ',
+                                      style: TextStyle(
+                                          color: AppColors.textSecondary,
+                                          fontSize: 14)),
+                                  TextSpan(
+                                      text: 'Sign In',
+                                      style: TextStyle(
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14)),
+                                ])),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
                           ],
                         ),
                       ),
@@ -233,69 +398,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ],
               ),
-
-              const SizedBox(height: 8),
-
-              // Disclaimer
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFFBEB),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFFCD34D)),
-                ),
-                child: const Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.info_outline,
-                        color: Color(0xFFD97706), size: 16),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'SmartCare provides wellness suggestions only. '
-                        'It does not diagnose or prescribe. Always consult a doctor.',
-                        style: TextStyle(
-                            fontSize: 12, color: Color(0xFF92400E)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Register button
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _register,
-                  child: _isLoading
-                      ? const SizedBox(width: 22, height: 22,
-                          child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2.5))
-                      : const Text('Create Account',
-                          style: TextStyle(fontSize: 16)),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-              Center(
-                child: GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: const Text.rich(TextSpan(children: [
-                    TextSpan(text: 'Already have an account? ',
-                        style: TextStyle(
-                            color: AppColors.textSecondary, fontSize: 14)),
-                    TextSpan(text: 'Sign In',
-                        style: TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14)),
-                  ])),
-                ),
-              ),
-              const SizedBox(height: 32),
-            ],
+            ),
           ),
         ),
       ),

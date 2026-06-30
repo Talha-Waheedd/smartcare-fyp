@@ -9,6 +9,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/medication_model.dart';
 import '../../services/medication_service.dart';
 import '../../services/notification_service.dart';
+import '../../theme/app_theme.dart';
 
 class AddMedicationScreen extends StatefulWidget {
   // If existingMed is passed, we're in EDIT mode
@@ -172,8 +173,12 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(isEditMode ? 'Edit Medication' : 'Add Medication'),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(gradient: AppGradients.button),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -190,8 +195,7 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Medication Name *',
                   hintText: 'e.g. Paracetamol',
-                  prefixIcon: Icon(Icons.medication),
-                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.medication_rounded),
                 ),
                 validator: (val) =>
                     val == null || val.trim().isEmpty ? 'Name is required' : null,
@@ -205,8 +209,7 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Dosage *',
                   hintText: 'e.g. 500mg, 1 tablet',
-                  prefixIcon: Icon(Icons.scale),
-                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.scale_rounded),
                 ),
                 validator: (val) =>
                     val == null || val.trim().isEmpty ? 'Dosage is required' : null,
@@ -217,10 +220,10 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
               // ── Frequency Dropdown ───────────────────────────────────────
               DropdownButtonFormField<String>(
                 value: selectedFrequency,
+                borderRadius: BorderRadius.circular(14),
                 decoration: const InputDecoration(
                   labelText: 'Frequency',
-                  prefixIcon: Icon(Icons.repeat),
-                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.repeat_rounded),
                 ),
                 items: frequencies
                     .map((f) => DropdownMenuItem(value: f, child: Text(f)))
@@ -238,48 +241,82 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
                   const Text(
                     'Reminder Times',
                     style: TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w600),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary),
                   ),
-                  TextButton.icon(
+                  OutlinedButton.icon(
                     onPressed: addTimeSlot,
                     icon: const Icon(Icons.add, size: 18),
                     label: const Text('Add Time'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.primary),
+                      shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(AppRadius.chip)),
+                    ),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
 
-              // Time slot list
+              // Time slot list (pill-shaped gradient chips)
               ...List.generate(selectedTimes.length, (index) {
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    leading: const Icon(Icons.access_time, color: Colors.blue),
-                    title: Text(
-                      selectedTimes[index].format(context),
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w500),
-                    ),
-                    subtitle: Text('Reminder ${index + 1}'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Edit time button
-                        IconButton(
-                          icon: const Icon(Icons.edit, size: 20),
-                          onPressed: () => pickTime(index),
-                        ),
-                        // Remove button (only if more than 1 slot)
-                        if (selectedTimes.length > 1)
-                          IconButton(
-                            icon: const Icon(Icons.close,
-                                size: 20, color: Colors.red),
-                            onPressed: () => removeTimeSlot(index),
-                          ),
-                      ],
-                    ),
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(AppRadius.chip),
                     onTap: () => pickTime(index),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        gradient: AppGradients.button,
+                        borderRadius:
+                            BorderRadius.circular(AppRadius.chip),
+                        boxShadow: AppShadows.button(AppColors.primary),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.access_time,
+                              color: Colors.white, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  selectedTimes[index].format(context),
+                                  style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white),
+                                ),
+                                Text('Reminder ${index + 1}',
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.white
+                                            .withOpacity(0.8))),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.edit,
+                                size: 20, color: Colors.white),
+                            onPressed: () => pickTime(index),
+                          ),
+                          if (selectedTimes.length > 1)
+                            IconButton(
+                              icon: const Icon(Icons.close,
+                                  size: 20, color: Colors.white),
+                              onPressed: () => removeTimeSlot(index),
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
                 );
               }),
@@ -293,8 +330,7 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Instructions (optional)',
                   hintText: 'e.g. Take after meal, avoid dairy',
-                  prefixIcon: Icon(Icons.notes),
-                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.notes_rounded),
                   alignLabelWithHint: true,
                 ),
               ),
@@ -302,26 +338,11 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
               const SizedBox(height: 28),
 
               // ── Save Button ───────────────────────────────────────────────
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: isLoading ? null : saveMedication,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : Text(
-                          isEditMode ? 'Update Medication' : 'Save & Set Reminder',
-                          style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w600),
-                        ),
-                ),
+              GradientButton(
+                label:
+                    isEditMode ? 'Update Medication' : 'Save & Set Reminder',
+                loading: isLoading,
+                onPressed: isLoading ? null : saveMedication,
               ),
             ],
           ),

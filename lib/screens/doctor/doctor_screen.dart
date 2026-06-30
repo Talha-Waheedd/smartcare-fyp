@@ -36,8 +36,7 @@ class _DoctorScreenState extends State<DoctorScreen> {
   String _doctorId = '';
   String _searchQuery = '';
 
-  static const _c1 = Color(0xFF0891B2);
-  static const _c2 = Color(0xFF0E7490);
+  static const _c1 = Color(0xFF0A84FF);
 
   @override
   void initState() {
@@ -103,7 +102,10 @@ class _DoctorScreenState extends State<DoctorScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: _c1,
-        title: const Text('SmartCare'),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(gradient: AppGradients.doctorHeader),
+        ),
+        title: const AppBarLogo(),
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
@@ -122,53 +124,65 @@ class _DoctorScreenState extends State<DoctorScreen> {
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [_c1, _c2],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              gradient: AppGradients.doctorHeader,
               borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(28),
                 bottomRight: Radius.circular(28),
               ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Welcome back,',
-                    style: TextStyle(color: Colors.white70, fontSize: 14)),
-                const SizedBox(height: 4),
-                Text(
-                  _doctorName.isNotEmpty ? 'Dr. $_doctorName' : '...',
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold),
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0x330A84FF),
+                  blurRadius: 20,
+                  offset: Offset(0, 10),
                 ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white30),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
+              ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.medical_services_outlined,
-                          size: 12, color: Colors.white),
-                      SizedBox(width: 4),
-                      Text('DOCTOR',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1)),
+                      const Text('Welcome back,',
+                          style:
+                              TextStyle(color: Colors.white70, fontSize: 14)),
+                      const SizedBox(height: 4),
+                      Text(
+                        _doctorName.isNotEmpty ? 'Dr. $_doctorName' : '...',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white30),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.medical_services_outlined,
+                                size: 12, color: Colors.white),
+                            SizedBox(width: 4),
+                            Text('DOCTOR',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 1)),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
+                Icon(Icons.medical_services_rounded,
+                    size: 64, color: Colors.white.withOpacity(0.30)),
               ],
             ),
           ),
@@ -252,23 +266,45 @@ class _DoctorScreenState extends State<DoctorScreen> {
           // Search
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (v) =>
-                  setState(() => _searchQuery = v.toLowerCase()),
-              decoration: InputDecoration(
-                hintText: 'Search patients...',
-                prefixIcon: const Icon(Icons.search,
-                    color: AppColors.textSecondary),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear,
-                            color: AppColors.textSecondary),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _searchQuery = '');
-                        })
-                    : null,
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(50),
+                boxShadow: AppShadows.card,
+              ),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (v) =>
+                    setState(() => _searchQuery = v.toLowerCase()),
+                decoration: InputDecoration(
+                  hintText: 'Search patients...',
+                  filled: true,
+                  fillColor: AppColors.surface,
+                  prefixIcon: const Icon(Icons.search,
+                      color: AppColors.textSecondary),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear,
+                              color: AppColors.textSecondary),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          })
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(50),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(50),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(50),
+                    borderSide:
+                        const BorderSide(color: _c1, width: 1.5),
+                  ),
+                ),
               ),
             ),
           ),
@@ -379,23 +415,27 @@ class _DoctorScreenState extends State<DoctorScreen> {
                         : 'P';
 
                     return Container(
-                      margin: const EdgeInsets.only(bottom: 10),
+                      margin: const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(
                         color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppColors.border),
+                        borderRadius: BorderRadius.circular(AppRadius.card),
+                        boxShadow: AppShadows.card,
                       ),
                       child: ListTile(
                         contentPadding:
                             const EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 8),
-                        leading: CircleAvatar(
-                          radius: 24,
-                          backgroundColor:
-                              _c1.withOpacity(0.12),
+                        leading: Container(
+                          width: 48,
+                          height: 48,
+                          alignment: Alignment.center,
+                          decoration: const BoxDecoration(
+                            gradient: AppGradients.doctorHeader,
+                            shape: BoxShape.circle,
+                          ),
                           child: Text(initial,
                               style: const TextStyle(
-                                  color: _c1,
+                                  color: Colors.white,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 18)),
                         ),

@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:animate_do/animate_do.dart';
 import '../../models/prescription_model.dart';
 import '../../theme/app_theme.dart';
 
@@ -35,7 +36,9 @@ class PatientPrescriptionsScreen extends StatelessWidget {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('My Prescriptions'),
-        backgroundColor: AppColors.success,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(gradient: AppGradients.greenHeader),
+        ),
       ),
       body: StreamBuilder<List<PrescriptionModel>>(
         stream: _stream(uid),
@@ -83,63 +86,83 @@ class PatientPrescriptionsScreen extends StatelessWidget {
             itemCount: prescriptions.length,
             itemBuilder: (_, i) {
               final p = prescriptions[i];
-              return Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header row
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.success.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(Icons.receipt_long,
-                                color: AppColors.success, size: 20),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Prescribed by Dr. ${p.doctorName}',
-                                    style: const TextStyle(
+              return FadeInUp(
+                delay: Duration(milliseconds: 50 * i),
+                duration: const Duration(milliseconds: 350),
+                from: 30,
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 14),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(AppRadius.card),
+                    boxShadow: AppShadows.card,
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadius.card),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Gradient header band
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: const BoxDecoration(
+                              gradient: AppGradients.greenHeader),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.22),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(Icons.receipt_long,
+                                    color: Colors.white, size: 20),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Dr. ${p.doctorName}',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 15,
+                                            color: Colors.white)),
+                                    Text(_formatDate(p.createdAt),
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.white
+                                                .withOpacity(0.85))),
+                                  ],
+                                ),
+                              ),
+                              // Read-only badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.22),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: const Text('READ ONLY',
+                                    style: TextStyle(
+                                        fontSize: 9,
+                                        color: Colors.white,
                                         fontWeight: FontWeight.w600,
-                                        fontSize: 14,
-                                        color: AppColors.textPrimary)),
-                                Text(_formatDate(p.createdAt),
-                                    style: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppColors.textSecondary)),
-                              ],
-                            ),
+                                        letterSpacing: 0.5)),
+                              ),
+                            ],
                           ),
-                          // Read-only badge
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.border,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Text('READ ONLY',
-                                style: TextStyle(
-                                    fontSize: 9,
-                                    color: AppColors.textSecondary,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0.5)),
-                          ),
-                        ],
-                      ),
+                        ),
 
-                      const Divider(height: 20),
-
-                      // Medicines list
-                      ...p.medicines.map((med) => Padding(
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Medicines list
+                              ...p.medicines.map((med) => Padding(
                             padding: const EdgeInsets.only(bottom: 10),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -219,22 +242,42 @@ class PatientPrescriptionsScreen extends StatelessWidget {
                           ],
                         ),
                       ],
-                      if (p.validUntil.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            const Icon(Icons.event_available,
-                                size: 14, color: AppColors.success),
-                            const SizedBox(width: 6),
-                            Text('Valid until: ${p.validUntil}',
-                                style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.success,
-                                    fontWeight: FontWeight.w500)),
-                          ],
+                              if (p.validUntil.isNotEmpty) ...[
+                                const SizedBox(height: 12),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.success
+                                          .withOpacity(0.12),
+                                      borderRadius:
+                                          BorderRadius.circular(20),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.event_available,
+                                            size: 14,
+                                            color: AppColors.success),
+                                        const SizedBox(width: 6),
+                                        Text('Valid until: ${p.validUntil}',
+                                            style: const TextStyle(
+                                                fontSize: 12,
+                                                color: AppColors.success,
+                                                fontWeight:
+                                                    FontWeight.w600)),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
                       ],
-                    ],
+                    ),
                   ),
                 ),
               );

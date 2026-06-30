@@ -9,6 +9,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:animate_do/animate_do.dart';
 import 'dart:async';
 import 'dart:io';
 import '../../models/health_record_model.dart';
@@ -307,13 +308,24 @@ class _HealthRecordScreenState extends State<HealthRecordScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Health Records'),
-        backgroundColor: AppColors.success,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(gradient: AppGradients.greenHeader),
+        ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _isUploading ? null : _uploadRecord,
-        icon: const Icon(Icons.upload_file),
-        label: const Text('Upload Record'),
-        backgroundColor: AppColors.success,
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          gradient: AppGradients.greenHeader,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: AppShadows.button(AppColors.secondary),
+        ),
+        child: FloatingActionButton.extended(
+          onPressed: _isUploading ? null : _uploadRecord,
+          icon: const Icon(Icons.upload_file),
+          label: const Text('Upload Record'),
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
       ),
       body: Column(
         children: [
@@ -402,10 +414,15 @@ class _HealthRecordScreenState extends State<HealthRecordScreen> {
                 return ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                   itemCount: records.length,
-                  itemBuilder: (_, i) => _RecordCard(
-                    record: records[i],
-                    onOpen: () => _openFile(records[i].fileUrl),
-                    onDelete: () => _deleteRecord(records[i]),
+                  itemBuilder: (_, i) => SlideInRight(
+                    delay: Duration(milliseconds: 50 * i),
+                    duration: const Duration(milliseconds: 350),
+                    from: 40,
+                    child: _RecordCard(
+                      record: records[i],
+                      onOpen: () => _openFile(records[i].fileUrl),
+                      onDelete: () => _deleteRecord(records[i]),
+                    ),
                   ),
                 );
               },
@@ -433,9 +450,15 @@ class _RecordCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        boxShadow: AppShadows.card,
+      ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         onTap: onOpen,
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -444,8 +467,8 @@ class _RecordCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: record.iconColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  color: record.iconColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(record.icon, color: record.iconColor, size: 26),
               ),

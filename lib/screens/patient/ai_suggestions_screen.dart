@@ -6,8 +6,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:animate_do/animate_do.dart';
 import '../../models/ai_suggestion_model.dart';
 import '../../services/ai_service.dart';
+import '../../theme/app_theme.dart';
 import '../auth/login_screen.dart';
 
 class AiSuggestionScreen extends StatefulWidget {
@@ -76,11 +79,13 @@ class _AiSuggestionScreenState extends State<AiSuggestionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Personalized Wellness Tips'),
-        backgroundColor: Colors.purple,
         foregroundColor: Colors.white,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(gradient: AppGradients.purpleHeader),
+        ),
         actions: [
           // Refresh button
           IconButton(
@@ -96,18 +101,21 @@ class _AiSuggestionScreenState extends State<AiSuggestionScreen> {
           Container(
             width: double.infinity,
             margin: const EdgeInsets.all(12),
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.amber.shade50,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.amber.shade300),
+              gradient: const LinearGradient(
+                colors: [AppColors.warning, Color(0xFFFFB84D)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: AppShadows.button(AppColors.warning),
             ),
-            child: Row(
+            child: const Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.info_outline,
-                    color: Colors.amber.shade700, size: 18),
-                const SizedBox(width: 8),
+                Icon(Icons.info_outline, color: Colors.white, size: 20),
+                SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'Wellness tips only — generated from your profile, medications, '
@@ -115,7 +123,8 @@ class _AiSuggestionScreenState extends State<AiSuggestionScreen> {
                     'Not medical advice. Always consult your doctor.',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.amber.shade900,
+                      color: Colors.white,
+                      height: 1.4,
                     ),
                   ),
                 ),
@@ -126,17 +135,7 @@ class _AiSuggestionScreenState extends State<AiSuggestionScreen> {
           // ── Content ─────────────────────────────────────────────────────
           Expanded(
             child: _isLoading
-                ? const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(color: Colors.purple),
-                        SizedBox(height: 16),
-                        Text('Building recommendations from your health profile...',
-                            style: TextStyle(color: Colors.grey)),
-                      ],
-                    ),
-                  )
+                ? _buildShimmerList()
                 : _suggestions.isEmpty
                     ? Center(
                         child: Column(
@@ -162,13 +161,66 @@ class _AiSuggestionScreenState extends State<AiSuggestionScreen> {
                           padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
                           itemCount: _suggestions.length,
                           itemBuilder: (context, index) {
-                            return _buildSuggestionCard(
-                                _suggestions[index]);
+                            return FadeInUp(
+                              delay: Duration(milliseconds: 50 * index),
+                              duration: const Duration(milliseconds: 350),
+                              from: 30,
+                              child: _buildSuggestionCard(
+                                  _suggestions[index]),
+                            );
                           },
                         ),
                       ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ── Shimmer loading placeholders ───────────────────────────────────────────
+  Widget _buildShimmerList() {
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+      itemCount: 5,
+      itemBuilder: (_, __) => Shimmer.fromColors(
+        baseColor: AppColors.border,
+        highlightColor: AppColors.background,
+        child: Container(
+          height: 76,
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                        width: double.infinity,
+                        height: 12,
+                        color: Colors.white),
+                    const SizedBox(height: 8),
+                    Container(width: 120, height: 10, color: Colors.white),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -180,35 +232,56 @@ class _AiSuggestionScreenState extends State<AiSuggestionScreen> {
 
     return StatefulBuilder(
       builder: (context, setCardState) {
-        return Card(
+        return Container(
           margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14)),
-          elevation: 2,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: () => setCardState(() => _expanded = !_expanded),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            boxShadow: AppShadows.card,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // ── Card Header ─────────────────────────────────────
-                  Row(
-                    children: [
-                      // Category icon circle
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.12),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(
-                          suggestion.category.emoji,
-                          style: const TextStyle(fontSize: 18),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
+                  // Left accent bar (category color)
+                  Container(width: 5, color: color),
+                  Expanded(
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(AppRadius.card),
+                      onTap: () =>
+                          setCardState(() => _expanded = !_expanded),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // ── Card Header ───────────────────────────
+                            Row(
+                              children: [
+                                // Category emoji in gradient circle
+                                Container(
+                                  width: 42,
+                                  height: 42,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        color.withOpacity(0.85),
+                                        color.withOpacity(0.5),
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Text(
+                                    suggestion.category.emoji,
+                                    style: const TextStyle(fontSize: 18),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -323,10 +396,15 @@ class _AiSuggestionScreenState extends State<AiSuggestionScreen> {
                     ),
                   ],
                 ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        );
+          );
       },
     );
   }

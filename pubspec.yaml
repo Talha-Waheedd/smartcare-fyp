@@ -28,6 +28,9 @@ dependencies:
   # ── UI ─────────────────────────────────────────────────────────────────
   cupertino_icons: ^1.0.8
   google_fonts: ^6.2.1
+  animate_do: ^3.3.4
+  flutter_animate: ^4.5.0
+  shimmer: ^3.0.0
 
 dev_dependencies:
   flutter_test:

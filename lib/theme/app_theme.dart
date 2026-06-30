@@ -4,50 +4,139 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
   // ── Primary Palette ────────────────────────────────────────────────────────
-  static const primary       = Color(0xFF2563EB);
-  static const primaryDark   = Color(0xFF1D4ED8);
-  static const primaryLight  = Color(0xFFEFF6FF);
+  static const primary       = Color(0xFF2D6BFF); // vibrant medical blue
+  static const primaryDark   = Color(0xFF1A4FCC);
+  static const primaryLight  = Color(0xFFEEF3FF);
+
+  // ── Secondary / Accent ──────────────────────────────────────────────────────
+  static const secondary = Color(0xFF00C9A7); // health teal / mint
+  static const accent    = Color(0xFF00C9A7);
 
   // ── Role Colors ────────────────────────────────────────────────────────────
-  static const doctor  = Color(0xFF0891B2);
-  static const patient = Color(0xFF16A34A);
-  static const admin   = Color(0xFF7C3AED);
+  static const doctor  = Color(0xFF0A84FF);
+  static const patient = Color(0xFF00C9A7);
+  static const admin   = Color(0xFF7B5EA7);
 
-  // ── Accent ────────────────────────────────────────────────────────────────
-  static const accent  = Color(0xFF06B6D4);
-  static const success = Color(0xFF16A34A);
-  static const warning = Color(0xFFF59E0B);
-  static const error   = Color(0xFFDC2626);
+  // ── Status ──────────────────────────────────────────────────────────────────
+  static const success = Color(0xFF00B87C);
+  static const warning = Color(0xFFFF9500);
+  static const error   = Color(0xFFFF3B5C);
 
   // ── Neutrals ───────────────────────────────────────────────────────────────
-  static const background    = Color(0xFFF8FAFC);
+  static const background    = Color(0xFFF5F7FB); // soft off-white
   static const surface       = Color(0xFFFFFFFF);
-  static const border        = Color(0xFFE2E8F0);
-  static const textPrimary   = Color(0xFF0F172A);
-  static const textSecondary = Color(0xFF64748B);
-  static const textHint      = Color(0xFF94A3B8);
+  static const card          = Color(0xFFFFFFFF);
+  static const border        = Color(0xFFE8ECF4);
+  static const textPrimary   = Color(0xFF0D1B3E); // deep navy
+  static const textSecondary = Color(0xFF6B7A99);
+  static const textHint      = Color(0xFFA0AABB);
+}
+
+/// Centralised gradients used on headers and hero sections.
+class AppGradients {
+  static const patientHeader = LinearGradient(
+    colors: [Color(0xFF2D6BFF), Color(0xFF00C9A7)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const doctorHeader = LinearGradient(
+    colors: [Color(0xFF0A84FF), Color(0xFF0055CC)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const adminHeader = LinearGradient(
+    colors: [Color(0xFF7B5EA7), Color(0xFF4A3580)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const loginHero = LinearGradient(
+    colors: [Color(0xFF0D1B3E), Color(0xFF2D6BFF)],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
+
+  static const greenHeader = LinearGradient(
+    colors: [Color(0xFF00C9A7), Color(0xFF00B87C)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const purpleHeader = LinearGradient(
+    colors: [Color(0xFF7B5EA7), Color(0xFF4A3580)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const button = LinearGradient(
+    colors: [AppColors.primary, AppColors.secondary],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+  );
+
+  static const logo = LinearGradient(
+    colors: [AppColors.primary, AppColors.secondary],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+}
+
+/// Reusable elevation shadows.
+class AppShadows {
+  static List<BoxShadow> get card => [
+        BoxShadow(
+          color: AppColors.primary.withOpacity(0.08),
+          blurRadius: 20,
+          offset: const Offset(0, 8),
+        ),
+      ];
+
+  static List<BoxShadow> button(Color color) => [
+        BoxShadow(
+          color: color.withOpacity(0.30),
+          blurRadius: 12,
+          offset: const Offset(0, 6),
+        ),
+      ];
+}
+
+/// Border-radius tokens.
+class AppRadius {
+  static const card = 20.0;
+  static const button = 14.0;
+  static const input = 14.0;
+  static const chip = 20.0;
+  static const nav = 24.0;
 }
 
 class AppTheme {
   static ThemeData get theme {
-    return ThemeData(
+    final base = ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.primary,
         background: AppColors.background,
-      ),
+      ).copyWith(secondary: AppColors.secondary),
       scaffoldBackgroundColor: AppColors.background,
+    );
+
+    return base.copyWith(
+      textTheme: GoogleFonts.poppinsTextTheme(base.textTheme)
+          .apply(bodyColor: AppColors.textPrimary, displayColor: AppColors.textPrimary),
 
       // AppBar
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: TextStyle(
+        titleTextStyle: GoogleFonts.poppins(
           color: Colors.white,
           fontSize: 18,
           fontWeight: FontWeight.w600,
@@ -55,12 +144,12 @@ class AppTheme {
         ),
       ),
 
-      // ✅ FIX: CardThemeData instead of CardTheme
       cardTheme: CardThemeData(
         color: AppColors.surface,
         elevation: 0,
+        shadowColor: AppColors.primary.withOpacity(0.08),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppRadius.card),
           side: const BorderSide(color: AppColors.border, width: 1),
         ),
         margin: const EdgeInsets.only(bottom: 12),
@@ -74,9 +163,9 @@ class AppTheme {
           elevation: 0,
           minimumSize: const Size(double.infinity, 50),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppRadius.button),
           ),
-          textStyle: const TextStyle(
+          textStyle: GoogleFonts.poppins(
             fontSize: 15,
             fontWeight: FontWeight.w600,
           ),
@@ -90,28 +179,277 @@ class AppTheme {
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.input),
           borderSide: const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.input),
           borderSide: const BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.input),
           borderSide: const BorderSide(color: AppColors.primary, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.input),
           borderSide: const BorderSide(color: AppColors.error),
         ),
-        labelStyle: const TextStyle(
+        labelStyle: GoogleFonts.poppins(
             color: AppColors.textSecondary, fontSize: 14),
-        hintStyle: const TextStyle(
+        hintStyle: GoogleFonts.poppins(
             color: AppColors.textHint, fontSize: 14),
       ),
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// App Logo
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum AppLogoSize { small, medium, large }
+
+/// Rounded-square gradient logo with a monitor-heart (pulse) icon.
+class AppLogo extends StatelessWidget {
+  final AppLogoSize size;
+  final bool glow;
+
+  const AppLogo({super.key, this.size = AppLogoSize.medium, this.glow = true});
+
+  double get _box {
+    switch (size) {
+      case AppLogoSize.large:
+        return 80;
+      case AppLogoSize.small:
+        return 32;
+      case AppLogoSize.medium:
+        return 48;
+    }
+  }
+
+  double get _radius {
+    switch (size) {
+      case AppLogoSize.large:
+        return 22;
+      case AppLogoSize.small:
+        return 12;
+      case AppLogoSize.medium:
+        return 18;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: _box,
+      height: _box,
+      decoration: BoxDecoration(
+        gradient: AppGradients.logo,
+        borderRadius: BorderRadius.circular(_radius),
+        boxShadow: glow
+            ? [
+                BoxShadow(
+                  color: Colors.white.withOpacity(0.35),
+                  blurRadius: 22,
+                  spreadRadius: 1,
+                ),
+                BoxShadow(
+                  color: AppColors.primary.withOpacity(0.30),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ]
+            : null,
+      ),
+      child: Icon(
+        Icons.monitor_heart_rounded,
+        color: Colors.white,
+        size: _box * 0.6,
+      ),
+    );
+  }
+}
+
+/// "Smart" + "Care" wordmark. Set [onDark] for white "Smart" on dark headers.
+class AppLogoText extends StatelessWidget {
+  final double fontSize;
+  final bool onDark;
+  final String? subtitle;
+
+  const AppLogoText({
+    super.key,
+    this.fontSize = 28,
+    this.onDark = true,
+    this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final smartColor = onDark ? Colors.white : AppColors.textPrimary;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        RichText(
+          text: TextSpan(
+            style: GoogleFonts.poppins(
+                fontSize: fontSize, fontWeight: FontWeight.w800, height: 1.1),
+            children: [
+              TextSpan(text: 'Smart', style: TextStyle(color: smartColor)),
+              const TextSpan(
+                  text: 'Care', style: TextStyle(color: AppColors.secondary)),
+            ],
+          ),
+        ),
+        if (subtitle != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            subtitle!,
+            style: GoogleFonts.poppins(
+              fontSize: fontSize * 0.45,
+              color: (onDark ? Colors.white : AppColors.textSecondary)
+                  .withOpacity(0.6),
+              fontWeight: FontWeight.w300,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Compact logo + wordmark for app bars (medium logo + "SmartCare").
+class AppBarLogo extends StatelessWidget {
+  final bool onDark;
+  const AppBarLogo({super.key, this.onDark = true});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const AppLogo(size: AppLogoSize.small, glow: false),
+        const SizedBox(width: 10),
+        RichText(
+          text: TextSpan(
+            style: GoogleFonts.poppins(
+                fontSize: 19, fontWeight: FontWeight.w700),
+            children: [
+              TextSpan(
+                  text: 'Smart',
+                  style: TextStyle(
+                      color: onDark ? Colors.white : AppColors.textPrimary)),
+              const TextSpan(
+                  text: 'Care', style: TextStyle(color: AppColors.secondary)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Full-width gradient button with shadow and tap-scale animation.
+class GradientButton extends StatefulWidget {
+  final String label;
+  final VoidCallback? onPressed;
+  final bool loading;
+  final IconData? icon;
+  final Gradient gradient;
+  final double height;
+
+  const GradientButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.loading = false,
+    this.icon,
+    this.gradient = AppGradients.button,
+    this.height = 54,
+  });
+
+  @override
+  State<GradientButton> createState() => _GradientButtonState();
+}
+
+class _GradientButtonState extends State<GradientButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.onPressed != null && !widget.loading;
+    return GestureDetector(
+      onTapDown: enabled ? (_) => setState(() => _pressed = true) : null,
+      onTapUp: enabled ? (_) => setState(() => _pressed = false) : null,
+      onTapCancel: enabled ? () => setState(() => _pressed = false) : null,
+      onTap: enabled ? widget.onPressed : null,
+      child: AnimatedScale(
+        scale: _pressed ? 0.96 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        child: Container(
+          width: double.infinity,
+          height: widget.height,
+          decoration: BoxDecoration(
+            gradient: enabled
+                ? widget.gradient
+                : LinearGradient(colors: [
+                    AppColors.textHint.withOpacity(0.5),
+                    AppColors.textHint.withOpacity(0.5)
+                  ]),
+            borderRadius: BorderRadius.circular(AppRadius.button),
+            boxShadow: enabled ? AppShadows.button(AppColors.primary) : null,
+          ),
+          child: Center(
+            child: widget.loading
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2.5),
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (widget.icon != null) ...[
+                        Icon(widget.icon, color: Colors.white, size: 20),
+                        const SizedBox(width: 8),
+                      ],
+                      Text(
+                        widget.label,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Right-to-left slide page route to use for navigation transitions.
+class SlideRoute<T> extends PageRouteBuilder<T> {
+  final Widget page;
+  SlideRoute({required this.page})
+      : super(
+          transitionDuration: const Duration(milliseconds: 320),
+          pageBuilder: (_, __, ___) => page,
+          transitionsBuilder: (_, animation, __, child) {
+            final curved = CurvedAnimation(
+                parent: animation, curve: Curves.easeOutCubic);
+            return SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(1, 0),
+                end: Offset.zero,
+              ).animate(curved),
+              child: FadeTransition(opacity: curved, child: child),
+            );
+          },
+        );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -126,6 +464,7 @@ class DashboardHeader extends StatelessWidget {
   final Color startColor;
   final Color endColor;
   final List<Widget>? chips;
+  final IconData? illustration;
 
   const DashboardHeader({
     super.key,
@@ -133,15 +472,16 @@ class DashboardHeader extends StatelessWidget {
     required this.name,
     required this.subtitle,
     this.startColor = AppColors.primary,
-    this.endColor = AppColors.primaryDark,
+    this.endColor = AppColors.secondary,
     this.chips,
+    this.illustration,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 30),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [startColor, endColor],
@@ -154,35 +494,45 @@ class DashboardHeader extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: startColor.withOpacity(0.3),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+            color: startColor.withOpacity(0.30),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(greeting,
-              style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w400)),
-          const SizedBox(height: 4),
-          Text(name,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.2)),
-          const SizedBox(height: 4),
-          Text(subtitle,
-              style:
-                  const TextStyle(color: Colors.white60, fontSize: 13)),
-          if (chips != null) ...[
-            const SizedBox(height: 12),
-            Wrap(spacing: 8, children: chips!),
-          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(greeting,
+                    style: TextStyle(
+                        color: Colors.white.withOpacity(0.85),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400)),
+                const SizedBox(height: 4),
+                Text(name,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.2)),
+                const SizedBox(height: 4),
+                Text(subtitle,
+                    style: TextStyle(
+                        color: Colors.white.withOpacity(0.7), fontSize: 13)),
+                if (chips != null) ...[
+                  const SizedBox(height: 12),
+                  Wrap(spacing: 8, children: chips!),
+                ],
+              ],
+            ),
+          ),
+          if (illustration != null)
+            Icon(illustration,
+                size: 64, color: Colors.white.withOpacity(0.4)),
         ],
       ),
     );
