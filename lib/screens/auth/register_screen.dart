@@ -157,11 +157,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
 
                   // ── BOTTOM CARD ───────────────────────────────────────
-                  Expanded(
-                    child: SlideInUp(
-                      duration: const Duration(milliseconds: 500),
-                      from: 120,
-                      child: Container(
+                  SlideInUp(
+                    duration: const Duration(milliseconds: 500),
+                    from: 120,
+                    child: Container(
                         width: double.infinity,
                         padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
                         decoration: const BoxDecoration(
@@ -395,7 +394,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),

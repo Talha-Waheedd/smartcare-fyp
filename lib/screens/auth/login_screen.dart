@@ -187,11 +187,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
 
                   // ── BOTTOM CARD SECTION ───────────────────────────────
-                  Expanded(
-                    child: SlideInUp(
-                      duration: const Duration(milliseconds: 500),
-                      from: 120,
-                      child: Container(
+                  SlideInUp(
+                    duration: const Duration(milliseconds: 500),
+                    from: 120,
+                    child: Container(
                         width: double.infinity,
                         padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
                         decoration: const BoxDecoration(
@@ -337,7 +336,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
